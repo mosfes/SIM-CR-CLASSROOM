@@ -18,12 +18,18 @@ import {
   Square,
   Sun,
   Stethoscope,
-  Trophy,
 } from "lucide-react";
 import { getPlayRole, type PlayRole, type PlayRoleId } from "@/lib/play/roles";
 import { RoomQrCode } from "@/components/play/room-qr-code";
 import { SoundToggle } from "@/components/play/sound-toggle";
 import { startMusic, stopMusic } from "@/lib/play/sound";
+import {
+  GROUP_ACCENTS,
+  GroupResultsSummaryCard,
+  GroupScoreLeaderboard,
+  OverallResultsDonut,
+  type GroupResults,
+} from "@/components/projector/results-summary";
 
 type SessionStatus = "LOBBY" | "RUNNING" | "ENDED";
 type ProjectorTheme = "dark" | "light";
@@ -110,21 +116,6 @@ interface Participant {
   student: { name: string };
 }
 
-interface GroupResults {
-  diagnosedCount: number;
-  correctCount: number;
-  wrongCount: number;
-  successRate: number;
-  labCount: number;
-  labCorrectCount: number;
-  labWrongCount: number;
-  labSuccessRate: number;
-  doctorScore: number;
-  labScore: number;
-  totalScore: number;
-  topScorers: Array<{ studentId: string; name: string; score: number }>;
-}
-
 interface ProjectorSnapshot {
   id: string;
   roomCode: string;
@@ -155,21 +146,6 @@ const FLOW = [
   { label: "ยา", Icon: Pill, key: "pharmacyDispenses" as const, tone: "text-fuchsia-300" },
 ];
 
-const GROUP_ACCENTS = [
-  { badge: "bg-amber-400 text-amber-950", ring: "ring-amber-300/60" },
-  { badge: "bg-emerald-400 text-emerald-950", ring: "ring-emerald-300/60" },
-  { badge: "bg-sky-400 text-sky-950", ring: "ring-sky-300/60" },
-  { badge: "bg-fuchsia-400 text-fuchsia-950", ring: "ring-fuchsia-300/60" },
-  { badge: "bg-indigo-400 text-indigo-950", ring: "ring-indigo-300/60" },
-  { badge: "bg-rose-400 text-rose-950", ring: "ring-rose-300/60" },
-];
-
-const RANK_BADGES = [
-  "bg-amber-400 text-amber-950",
-  "bg-slate-300 text-slate-800",
-  "bg-orange-400 text-orange-950",
-];
-
 function RoleAvatar({ role, size = "md" }: { role: PlayRole | undefined; size?: "sm" | "md" | "lg" }) {
   const sizeClass = size === "sm" ? "h-6 w-6" : size === "lg" ? "h-12 w-12" : "h-10 w-10";
   const iconClass = size === "sm" ? "h-3.5 w-3.5" : size === "lg" ? "h-6 w-6" : "h-5 w-5";
@@ -181,132 +157,6 @@ function RoleAvatar({ role, size = "md" }: { role: PlayRole | undefined; size?: 
     >
       {Icon && <Icon className={iconClass} />}
     </span>
-  );
-}
-
-const CHART_CORRECT_COLOR = "#34d399";
-const CHART_WRONG_COLOR = "#fb7185";
-
-function OverallResultsDonut({
-  correct,
-  wrong,
-  themeStyles,
-}: {
-  correct: number;
-  wrong: number;
-  themeStyles: (typeof PROJECTOR_THEME_STYLES)[keyof typeof PROJECTOR_THEME_STYLES];
-}) {
-  const total = correct + wrong;
-  const radius = 42;
-  const circumference = 2 * Math.PI * radius;
-  const correctLength = total > 0 ? (correct / total) * circumference : 0;
-  const wrongLength = total > 0 ? (wrong / total) * circumference : 0;
-  const successRate = total > 0 ? Math.round((correct / total) * 100) : 0;
-
-  return (
-    <div className="flex shrink-0 items-center gap-4">
-      <svg viewBox="0 0 100 100" width="112" height="112" role="img" aria-label={`อัตราวินิจฉัยถูกต้องรวม ${successRate} เปอร์เซ็นต์`}>
-        <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="12" className="text-slate-400/25" />
-        {total > 0 && (
-          <>
-            <circle
-              cx="50"
-              cy="50"
-              r={radius}
-              fill="none"
-              stroke={CHART_CORRECT_COLOR}
-              strokeWidth="12"
-              strokeLinecap="round"
-              strokeDasharray={`${correctLength} ${circumference - correctLength}`}
-              transform="rotate(-90 50 50)"
-            />
-            <circle
-              cx="50"
-              cy="50"
-              r={radius}
-              fill="none"
-              stroke={CHART_WRONG_COLOR}
-              strokeWidth="12"
-              strokeLinecap="round"
-              strokeDasharray={`${wrongLength} ${circumference - wrongLength}`}
-              strokeDashoffset={-correctLength}
-              transform="rotate(-90 50 50)"
-            />
-          </>
-        )}
-        <text x="50" y="47" textAnchor="middle" className="fill-current text-[22px] font-black">
-          {successRate}%
-        </text>
-        <text x="50" y="64" textAnchor="middle" className={`fill-current text-[9px] font-bold ${themeStyles.secondary}`}>
-          สำเร็จรวม
-        </text>
-      </svg>
-      <div className="flex flex-col gap-1.5 text-sm font-bold">
-        <span className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_CORRECT_COLOR }} />
-          แพทย์ตอบถูก {correct} ครั้ง
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_WRONG_COLOR }} />
-          แพทย์ตอบผิด {wrong} ครั้ง
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function GroupScoreLeaderboard({
-  bars,
-  themeStyles,
-}: {
-  bars: Array<{
-    id: string;
-    name: string;
-    score: number;
-    successRate: number;
-    correctCount: number;
-    wrongCount: number;
-    doctorScore: number;
-    labCorrectCount: number;
-    labWrongCount: number;
-    labScore: number;
-    accentBadge: string;
-  }>;
-  themeStyles: (typeof PROJECTOR_THEME_STYLES)[keyof typeof PROJECTOR_THEME_STYLES];
-}) {
-  const maxScore = Math.max(1, ...bars.map((bar) => bar.score));
-
-  return (
-    <div className="flex flex-1 flex-col gap-3">
-      {bars.map((bar) => (
-        <div key={bar.id} className="flex flex-col gap-1">
-          <div className="flex items-center gap-3">
-            <span className="w-24 shrink-0 truncate text-sm font-bold sm:w-32">{bar.name}</span>
-            <div className={`h-6 min-w-0 flex-1 overflow-hidden rounded-full ${themeStyles.stat}`}>
-              <div
-                className={`flex h-full items-center justify-end rounded-full px-2 text-xs font-black ${bar.accentBadge}`}
-                style={{ width: `${Math.max(8, (bar.score / maxScore) * 100)}%` }}
-              >
-                {bar.score} คะแนน
-              </div>
-            </div>
-            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${themeStyles.stat} ${themeStyles.secondary}`}>
-              แม่นยำ {bar.successRate}%
-            </span>
-          </div>
-          <div className={`grid grid-cols-1 gap-x-4 gap-y-0.5 pl-[calc(6rem+0.75rem)] text-[11px] font-semibold sm:grid-cols-2 sm:pl-[calc(8rem+0.75rem)] ${themeStyles.secondary}`}>
-            <span>
-              แพทย์: ถูก <span style={{ color: CHART_CORRECT_COLOR }}>{bar.correctCount}</span> ผิด{" "}
-              <span style={{ color: CHART_WRONG_COLOR }}>{bar.wrongCount}</span> · {bar.doctorScore} คะแนน
-            </span>
-            <span>
-              เทคนิคการแพทย์: ถูก <span style={{ color: CHART_CORRECT_COLOR }}>{bar.labCorrectCount}</span> ผิด{" "}
-              <span style={{ color: CHART_WRONG_COLOR }}>{bar.labWrongCount}</span> · {bar.labScore} คะแนน
-            </span>
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -715,43 +565,7 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
                     </div>
 
                     {isEnded && group.results ? (
-                      <div className="mt-5 space-y-4">
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="rounded-2xl bg-amber-400 px-2 py-3 text-center text-amber-950">
-                            <p className="text-[10px] font-bold uppercase tracking-wide text-amber-950/70">คะแนนรวมทีม</p>
-                            <p className="mt-1 text-2xl font-black">{group.results.totalScore}</p>
-                          </div>
-                          <div className={`rounded-2xl px-2 py-3 text-center ${themeStyles.stat}`}>
-                            <p className={`text-[10px] font-bold uppercase tracking-wide ${themeStyles.secondary}`}>แพทย์</p>
-                            <p className="mt-1 text-2xl font-black">{group.results.doctorScore}</p>
-                          </div>
-                          <div className={`rounded-2xl px-2 py-3 text-center ${themeStyles.stat}`}>
-                            <p className={`text-[10px] font-bold uppercase tracking-wide ${themeStyles.secondary}`}>เทคนิคการแพทย์</p>
-                            <p className="mt-1 text-2xl font-black">{group.results.labScore}</p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <p className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide ${themeStyles.secondary}`}>
-                            <Trophy className="h-3.5 w-3.5 text-amber-300" /> ท็อป 3 คะแนนสูงสุด
-                          </p>
-                          {group.results.topScorers.length === 0 ? (
-                            <p className={`mt-2 text-xs ${themeStyles.faint}`}>ยังไม่มีคะแนนในห้องตรวจนี้</p>
-                          ) : (
-                            <div className="mt-2 space-y-1.5">
-                              {group.results.topScorers.map((scorer, rankIndex) => (
-                                <div key={scorer.studentId} className={`flex items-center justify-between rounded-xl px-3 py-2 ${themeStyles.item}`}>
-                                  <span className="flex min-w-0 items-center gap-2">
-                                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${RANK_BADGES[rankIndex]}`}>{rankIndex + 1}</span>
-                                    <span className="truncate text-sm font-bold">{scorer.name}</span>
-                                  </span>
-                                  <span className="shrink-0 text-sm font-black">{scorer.score} คะแนน</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <GroupResultsSummaryCard results={group.results} themeStyles={themeStyles} />
                     ) : (
                       <div className="mt-5 grid grid-cols-5 gap-2">{FLOW.map(({ label, Icon, key, tone }) => <div key={key} className={`rounded-2xl px-2 py-3 text-center ${themeStyles.stat}`}><Icon className={`mx-auto h-4 w-4 ${tone}`} /><p className="mt-1 text-xl font-black">{group.work[key]}</p><p className={`mt-0.5 text-[10px] font-bold ${themeStyles.secondary}`}>{label}</p></div>)}</div>
                     )}
