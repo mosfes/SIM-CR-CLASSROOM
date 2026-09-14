@@ -24,6 +24,7 @@ import {
   Printer,
 } from "lucide-react";
 import { downloadElementAsPdf } from "@/lib/pdf-export";
+import { formatPatientCode } from "@/lib/patient-code";
 
 interface MedicineItem {
   name: string;
@@ -74,7 +75,7 @@ interface SubmissionItem {
     pulseBpm: number;
     chronicDiseaseStatus: string;
     chronicDiseaseDetails: string | null;
-    chiefComplaint: string;
+    chiefComplaint: string | null;
     symptomDescription: string;
     notes: string | null;
     createdAt: string;
@@ -86,6 +87,7 @@ interface SubmissionItem {
     panelDiseaseName: string;
     items: Array<{ name: string; result: string; referenceRange: string }>;
     isCorrect: boolean | null;
+    evaluationScore?: number | null;
     notes: string | null;
     createdAt: string;
   } | null;
@@ -139,7 +141,8 @@ interface SubmissionListItem {
     systolicBp: number;
     diastolicBp: number;
     pulseBpm: number;
-    chiefComplaint: string;
+    chiefComplaint: string | null;
+    symptomDescription: string;
     createdAt: string;
   } | null;
   lab: {
@@ -148,6 +151,7 @@ interface SubmissionListItem {
     panelDiseaseName: string;
     itemCount: number;
     isCorrect: boolean | null;
+    evaluationScore: number | null;
     createdAt: string;
   } | null;
   doctor: {
@@ -186,6 +190,73 @@ interface Pagination {
   pageSize: number;
   total: number;
   totalPages: number;
+}
+
+const SCORE_MAXIMUMS = {
+  total: 12,
+  doctor: 10,
+  medTech: 2,
+} as const;
+
+function formatScore(score: number | null | undefined, maximum: number) {
+  return `${typeof score === "number" ? score : "—"}/${maximum}`;
+}
+
+function ScoreSummary({
+  doctorScore,
+  medTechScore,
+  compact = false,
+}: {
+  doctorScore: number | null | undefined;
+  medTechScore: number | null | undefined;
+  compact?: boolean;
+}) {
+  const scoredParts = [doctorScore, medTechScore].filter(
+    (score): score is number => typeof score === "number"
+  );
+
+  if (scoredParts.length === 0) return null;
+
+  const totalScore = (typeof doctorScore === "number" ? doctorScore : 0) +
+    (typeof medTechScore === "number" ? medTechScore : 0);
+  const chipClass = compact
+    ? "inline-flex items-center gap-1 rounded-lg border bg-white px-2 py-0.5"
+    : "inline-flex items-center gap-1 rounded-xl border bg-white px-2.5 py-1.5";
+
+  return (
+    <div
+      className={
+        compact
+          ? "inline-flex flex-wrap items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/80 px-2 py-1 text-[11px] font-bold text-slate-700"
+          : "rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3"
+      }
+      aria-label="สรุปคะแนน"
+    >
+      {!compact && (
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-800">
+          สรุปคะแนนประเมิน
+        </p>
+      )}
+      <div className={compact ? "contents" : "flex flex-wrap items-center gap-2"}>
+        <span className={`${chipClass} border-emerald-300 text-emerald-800`}>
+          <span>รวมทั้งหมด</span>
+          <strong className="font-mono text-emerald-900">
+            {formatScore(totalScore, SCORE_MAXIMUMS.total)}
+          </strong>
+        </span>
+        <span className={`${chipClass} border-sky-200 text-sky-800`}>
+          <span>แพทย์</span>
+          <strong className="font-mono">{formatScore(doctorScore, SCORE_MAXIMUMS.doctor)}</strong>
+        </span>
+        <span className={`${chipClass} border-indigo-200 text-indigo-800`}>
+          <span>เทคนิคการแพทย์</span>
+          <strong className="font-mono">
+            {formatScore(medTechScore ?? 0, SCORE_MAXIMUMS.medTech)}
+          </strong>
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function MonitorContent({
@@ -387,11 +458,11 @@ export function MonitorContent({
     try {
       setExportingPdf(true);
       setExportError(null);
-      const queue = selectedSubmission.queueNumber ?? "-";
+      const patientCode = formatPatientCode(selectedSubmission.queueNumber);
       const today = new Date().toISOString().slice(0, 10);
       await downloadElementAsPdf(
         record,
-        `เวชระเบียน-คิว${queue}-${selectedSubmission.group.name}-${today}.pdf`
+        `เวชระเบียน-รหัสผู้ป่วย${patientCode}-${selectedSubmission.group.name}-${today}.pdf`
       );
     } catch (error) {
       console.error("Failed to export medical record PDF:", error);
@@ -502,12 +573,12 @@ export function MonitorContent({
       {/* Classroom & Group Selection Card */}
       <section className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs space-y-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600 border border-red-100">
               <Activity className="h-6 w-6" />
             </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold text-slate-900">
+            <div className="min-w-0">
+              <h1 className="break-words text-lg font-bold text-slate-900 sm:text-xl">
                 ติดตามการส่งตรวจของแต่ละห้องตรวจ (Room Monitor)
               </h1>
               <p className="text-xs text-slate-500">
@@ -517,8 +588,8 @@ export function MonitorContent({
           </div>
 
           {/* Classroom Selector */}
-          <div className="flex items-center gap-2">
-            <label htmlFor="classroom-select" className="text-xs font-semibold text-slate-600 shrink-0">
+          <div className="flex w-full min-w-0 flex-col gap-2 md:w-auto md:shrink-0 md:flex-row md:items-center">
+            <label htmlFor="classroom-select" className="shrink-0 text-xs font-semibold text-slate-600">
               เลือกห้องเรียน:
             </label>
             <select
@@ -529,7 +600,7 @@ export function MonitorContent({
                 setSelectedGroupId("ALL");
                 setCurrentPage(1);
               }}
-              className="rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2 text-xs font-bold text-slate-900 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/15"
+              className="w-full min-w-0 max-w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2 text-xs font-bold text-slate-900 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/15 md:w-72"
             >
               {classrooms.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -705,7 +776,7 @@ export function MonitorContent({
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            placeholder="ค้นหาชื่อผู้ป่วย, คิว, โรค..."
+            placeholder="ค้นหาชื่อผู้ป่วย, รหัสผู้ป่วย, โรค..."
             className="w-full rounded-xl border border-slate-200 bg-white py-1.5 pl-8 pr-7 text-xs text-slate-900 placeholder:text-slate-400 focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-400/15"
           />
           {searchQuery && (
@@ -777,7 +848,7 @@ export function MonitorContent({
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Queue Badge */}
                     <span className="inline-flex items-center gap-1 rounded-xl bg-red-600 px-3 py-1 text-xs font-black text-white shadow-xs">
-                      คิวที่ {sub.queueNumber ?? "-"}
+                      รหัสผู้ป่วย {formatPatientCode(sub.queueNumber)}
                     </span>
 
                     {/* Group Badge */}
@@ -831,25 +902,19 @@ export function MonitorContent({
                       </span>
                     )}
 
-                    {/* AI Score Badge or Fallback */}
-                    {sub.doctor && (
-                      sub.doctor.evaluationScore !== undefined && sub.doctor.evaluationScore !== null ? (
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-black shadow-2xs ${
-                            sub.doctor.isCorrect
-                              ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                              : "bg-rose-100 text-rose-800 border border-rose-300"
-                          }`}
-                        >
-                          <Sparkles className="h-3.5 w-3.5" />
-                          <span>AI: {sub.doctor.evaluationScore}/10</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-bold shadow-2xs bg-amber-100 text-amber-900 border border-amber-300">
-                          <AlertCircle className="h-3.5 w-3.5 text-amber-700" />
-                          <span>AI ไม่พร้อมใช้งาน</span>
-                        </span>
-                      )
+                    {/* Score Summary */}
+                    <ScoreSummary
+                      doctorScore={sub.doctor?.evaluationScore}
+                      medTechScore={sub.lab?.evaluationScore}
+                      compact
+                    />
+
+                    {/* AI Score Fallback */}
+                    {sub.doctor && sub.doctor.evaluationScore === null && (
+                      <span className="inline-flex items-center gap-1 rounded-xl border border-amber-300 bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900 shadow-2xs">
+                        <AlertCircle className="h-3.5 w-3.5 text-amber-700" />
+                        <span>AI ไม่พร้อมใช้งาน</span>
+                      </span>
                     )}
                   </div>
 
@@ -949,7 +1014,7 @@ export function MonitorContent({
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-600 line-clamp-1">
-                          <span className="text-slate-400">อาการ:</span> {sub.nurse.chiefComplaint}
+                          <span className="text-slate-400">อาการ:</span> {sub.nurse.symptomDescription}
                         </p>
                       </div>
                     ) : (
@@ -1004,6 +1069,18 @@ export function MonitorContent({
                             </span>
                           )}
                         </div>
+                        {sub.lab.evaluationScore !== null && (
+                          <div className="flex justify-between items-center pt-1 border-t border-slate-200/60 text-[11px]">
+                            <span className="text-slate-400">คะแนน:</span>
+                            <span
+                              className={`font-black font-mono ${
+                                sub.lab.isCorrect ? "text-emerald-700" : "text-rose-700"
+                              }`}
+                            >
+                              {sub.lab.evaluationScore}/2
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="rounded-xl border border-dashed border-slate-200 p-2.5 text-center text-slate-400 italic">
@@ -1219,7 +1296,7 @@ export function MonitorContent({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-black text-white">
-                    คิวที่ {selectedSubmission.queueNumber ?? "-"}
+                    รหัสผู้ป่วย {formatPatientCode(selectedSubmission.queueNumber)}
                   </span>
                   <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
                     {selectedSubmission.group.name}
@@ -1240,6 +1317,13 @@ export function MonitorContent({
               >
                 <X className="h-5 w-5" />
               </button>
+            </div>
+
+            <div data-pdf-block className="mt-4">
+              <ScoreSummary
+                doctorScore={selectedSubmission.doctor?.evaluationScore}
+                medTechScore={selectedSubmission.lab?.evaluationScore}
+              />
             </div>
 
             {/* Modal Content */}
@@ -1342,14 +1426,8 @@ export function MonitorContent({
 
                     <div data-pdf-block className="rounded-xl bg-white p-3 border border-emerald-100 space-y-2">
                       <div>
-                        <span className="text-slate-400 font-semibold">สาเหตุที่มาพบแพทย์:</span>
-                        <p className="font-medium text-slate-800 mt-0.5">
-                          {selectedSubmission.nurse.chiefComplaint}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 font-semibold">ลักษณะอาการ:</span>
-                        <p className="font-medium text-slate-800 mt-0.5">
+                        <span className="text-slate-400 font-semibold">อาการจากโรค:</span>
+                        <p className="whitespace-pre-wrap font-medium text-slate-800 mt-0.5">
                           {selectedSubmission.nurse.symptomDescription}
                         </p>
                       </div>
@@ -1402,6 +1480,17 @@ export function MonitorContent({
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-xl border border-rose-300 bg-rose-50 px-2.5 py-1 font-bold text-rose-700">
                           <XCircle className="h-3.5 w-3.5" /> ชุดตรวจไม่ตรงเฉลย
+                        </span>
+                      )}
+                      {selectedSubmission.lab.evaluationScore !== null && (
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1 font-black font-mono ${
+                            selectedSubmission.lab.isCorrect
+                              ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                              : "border-rose-300 bg-rose-50 text-rose-700"
+                          }`}
+                        >
+                          คะแนน: {selectedSubmission.lab.evaluationScore}/2
                         </span>
                       )}
                     </div>

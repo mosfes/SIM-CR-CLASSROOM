@@ -20,6 +20,7 @@ import {
   Printer,
 } from "lucide-react";
 import { downloadElementAsPdf } from "@/lib/pdf-export";
+import { formatPatientCode } from "@/lib/patient-code";
 
 interface StudentBasic {
   id: string;
@@ -129,6 +130,7 @@ interface ActivityResponseData {
       total: number;
       correct: number;
       accuracyPercent: number;
+      avgScore: number | null;
     };
     doctorStats: {
       total: number;
@@ -241,7 +243,9 @@ export function StudentActivityModal({ student, onClose }: StudentActivityModalP
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       const matchPatient = item.patient.fullName.toLowerCase().includes(q);
-      const matchQueue = item.queueNumber !== null && String(item.queueNumber).includes(q);
+      const matchQueue =
+        item.queueNumber !== null &&
+        (String(item.queueNumber).includes(q) || formatPatientCode(item.queueNumber).includes(q));
       const matchClass = item.classroomName.toLowerCase().includes(q);
       const matchGroup = item.groupName.toLowerCase().includes(q);
       const matchDisease = (item.payload.diseaseName || "").toLowerCase().includes(q);
@@ -427,7 +431,11 @@ export function StudentActivityModal({ student, onClose }: StudentActivityModalP
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-[11px] text-slate-500 truncate">เลือกชุดผลตรวจส่งให้แพทย์</p>
+                <p className="mt-0.5 text-[11px] text-slate-500 truncate">
+                  {data.summary.medTechStats.avgScore !== null
+                    ? `คะแนนเฉลี่ย: ${data.summary.medTechStats.avgScore} / 2`
+                    : "เลือกชุดผลตรวจส่งให้แพทย์"}
+                </p>
               </button>
 
               {/* Doctor Card */}
@@ -578,7 +586,7 @@ export function StudentActivityModal({ student, onClose }: StudentActivityModalP
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ค้นหาคนไข้, เลขคิว, โรค..."
+              placeholder="ค้นหาคนไข้, รหัสผู้ป่วย, โรค..."
               className="w-full rounded-xl border border-slate-200 bg-white py-1.5 pl-8 pr-7 text-xs text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:outline-none"
             />
             {searchQuery && (
@@ -698,7 +706,7 @@ export function StudentActivityModal({ student, onClose }: StudentActivityModalP
 
                         {act.queueNumber !== null && (
                           <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-200/70 px-2 py-0.5 rounded-md">
-                            คิว #{act.queueNumber}
+                            รหัสผู้ป่วย {formatPatientCode(act.queueNumber)}
                           </span>
                         )}
 
@@ -805,20 +813,11 @@ export function StudentActivityModal({ student, onClose }: StudentActivityModalP
                             </div>
                           </div>
 
-                          {/* Chief Complaint & Symptoms */}
+                          {/* Symptoms from the card room */}
                           <div className="space-y-2 text-xs">
                             <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
                               <span className="font-semibold text-slate-800 block text-[11px] mb-0.5">
-                                อาการสำคัญที่มาโรงพยาบาล (Chief Complaint):
-                              </span>
-                              <p className="text-slate-700 leading-relaxed">
-                                {act.payload.chiefComplaint || "-"}
-                              </p>
-                            </div>
-
-                            <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                              <span className="font-semibold text-slate-800 block text-[11px] mb-0.5">
-                                รายละเอียดอาการและการซักประวัติเพิ่มเติม:
+                                อาการผู้ป่วย:
                               </span>
                               <p className="text-slate-700 leading-relaxed whitespace-pre-line">
                                 {act.payload.symptomDescription || "-"}
@@ -856,6 +855,12 @@ export function StudentActivityModal({ student, onClose }: StudentActivityModalP
                               </span>
                             ) : (
                               <span className="text-xs font-medium text-slate-400">ไม่มีเฉลยรหัสโรค</span>
+                            )}
+                            {typeof act.payload.evaluationScore === "number" && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">
+                                <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+                                {act.payload.evaluationScore} / 2 คะแนน
+                              </span>
                             )}
                           </div>
 

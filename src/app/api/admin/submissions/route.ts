@@ -184,6 +184,7 @@ async function getSubmissionDetail(id: string) {
           panelDiseaseName: card.labResult.panelDiseaseName,
           items: parseLabResults(card.labResult.labItems),
           isCorrect: card.labResult.isCorrect,
+          evaluationScore: card.labResult.evaluationScore,
           notes: card.labResult.notes,
           createdAt: card.labResult.createdAt.toISOString(),
         }
@@ -365,9 +366,8 @@ export async function GET(request: NextRequest) {
         { doctorDiagnosis: { is: { diseaseName: { contains: search } } } },
         { doctorDiagnosis: { is: { doctorDiagnosis: { contains: search } } } },
       ];
-      const queueNumber = Number.parseInt(search, 10);
-      if (Number.isFinite(queueNumber) && String(queueNumber) === search) {
-        searchConditions.push({ queueNumber });
+      if (/^\d+$/.test(search)) {
+        searchConditions.push({ queueNumber: Number.parseInt(search, 10) });
       }
       filters.push({ OR: searchConditions });
     }
@@ -415,6 +415,7 @@ export async function GET(request: NextRequest) {
             diastolicBp: true,
             pulseBpm: true,
             chiefComplaint: true,
+            symptomDescription: true,
             createdAt: true,
           },
         },
@@ -425,6 +426,7 @@ export async function GET(request: NextRequest) {
             panelDiseaseName: true,
             labItems: true,
             isCorrect: true,
+            evaluationScore: true,
             createdAt: true,
           },
         },
@@ -487,6 +489,7 @@ export async function GET(request: NextRequest) {
               diastolicBp: card.nurseInterview.diastolicBp,
               pulseBpm: card.nurseInterview.pulseBpm,
               chiefComplaint: card.nurseInterview.chiefComplaint,
+              symptomDescription: card.nurseInterview.symptomDescription,
               createdAt: card.nurseInterview.createdAt.toISOString(),
             }
           : null,
@@ -497,6 +500,7 @@ export async function GET(request: NextRequest) {
               panelDiseaseName: card.labResult.panelDiseaseName,
               itemCount: parseLabResults(card.labResult.labItems).length,
               isCorrect: card.labResult.isCorrect,
+              evaluationScore: card.labResult.evaluationScore,
               createdAt: card.labResult.createdAt.toISOString(),
             }
           : null,

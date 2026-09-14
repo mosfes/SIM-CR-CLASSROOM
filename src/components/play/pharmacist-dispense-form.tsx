@@ -15,6 +15,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { playClick, playSuccess } from "@/lib/play/sound";
+import { formatPatientCode } from "@/lib/patient-code";
 
 export interface DoctorDiagnosisOption {
   id: string;
@@ -302,7 +303,7 @@ export function PharmacistDispenseForm({
                 จ่ายยาให้ {saveState.patientName} เรียบร้อยแล้ว (รวม {saveState.totalTablets} เม็ด)
               </p>
               <p className="mt-0.5 text-sm font-medium text-emerald-700">
-                คิวที่ {saveState.queueNumber ?? saveState.recordId.slice(-8)} เสร็จสิ้นรอบการรักษาผู้ป่วยรายนี้เรียบร้อยแล้ว ★
+                รหัสผู้ป่วย {saveState.queueNumber != null ? formatPatientCode(saveState.queueNumber) : saveState.recordId.slice(-8)} เสร็จสิ้นรอบการรักษาผู้ป่วยรายนี้เรียบร้อยแล้ว ★
               </p>
             </div>
           </div>
@@ -348,7 +349,7 @@ export function PharmacistDispenseForm({
                   </option>
                   {diagnoses.map((item) => (
                     <option key={item.id} value={item.id}>
-                      คิวที่ {item.queueNumber ?? "-"}: {item.patientPrefix}{item.patientFirstName} {item.patientLastName} · {item.age} ปี · วินิจฉัย: {item.diseaseName}
+                      รหัสผู้ป่วย {formatPatientCode(item.queueNumber)}: {item.patientPrefix}{item.patientFirstName} {item.patientLastName} · {item.age} ปี · วินิจฉัย: {item.diseaseName}
                     </option>
                   ))}
                 </select>
@@ -369,7 +370,7 @@ export function PharmacistDispenseForm({
                 {/* Basic Demographics */}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="ข้อมูลส่วนตัวผู้ป่วย">
                   {[
-                    ["คิวตรวจ", `คิวที่ ${selectedDiagnosis.queueNumber ?? "-"}`],
+                    ["รหัสผู้ป่วย", formatPatientCode(selectedDiagnosis.queueNumber)],
                     [
                       "ชื่อ-นามสกุล",
                       `${selectedDiagnosis.patientPrefix}${selectedDiagnosis.patientFirstName} ${selectedDiagnosis.patientLastName}`,
@@ -413,12 +414,12 @@ export function PharmacistDispenseForm({
                 </div>
 
                 {/* Patient symptoms & vitals reference */}
-                {(selectedDiagnosis.chiefComplaint || selectedDiagnosis.systolicBp) && (
+                {(selectedDiagnosis.symptomDescription || selectedDiagnosis.systolicBp) && (
                   <div className="grid gap-3 sm:grid-cols-2 text-xs">
-                    {selectedDiagnosis.chiefComplaint && (
+                    {selectedDiagnosis.symptomDescription && (
                       <div className="rounded-xl border border-dashed border-fuchsia-200 bg-white/80 p-3">
-                        <span className="font-bold text-slate-500">อาการสำคัญ (CC): </span>
-                        <span className="font-medium text-slate-700">{selectedDiagnosis.chiefComplaint}</span>
+                        <span className="font-bold text-slate-500">อาการผู้ป่วย: </span>
+                        <span className="whitespace-pre-wrap font-medium text-slate-700">{selectedDiagnosis.symptomDescription}</span>
                       </div>
                     )}
                     {selectedDiagnosis.systolicBp && (

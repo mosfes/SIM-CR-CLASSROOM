@@ -94,11 +94,9 @@ export async function POST(
     if (!session) {
       return jsonError("ไม่พบข้อมูลนักเรียน ห้องตรวจ หรือห้องจำลองที่เลือก", 400);
     }
-    if (session.status !== "LOBBY") {
+    if (session.status === "ENDED") {
       return jsonError(
-        session.status === "RUNNING"
-          ? "เกมเริ่มไปแล้ว จึงไม่สามารถเข้าร่วมระหว่างทางได้"
-          : "รอบจำลองนี้สิ้นสุดแล้ว",
+        "รอบจำลองนี้สิ้นสุดแล้ว",
         409
       );
     }

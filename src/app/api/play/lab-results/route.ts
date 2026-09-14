@@ -165,6 +165,7 @@ export async function POST(request: NextRequest) {
     const isCorrect = expectedDiseaseCode
       ? expectedDiseaseCode === selectedDiseaseCode
       : null;
+    const evaluationScore = isCorrect === null ? null : isCorrect ? 2 : 0;
 
     const labResult = await prisma.labResult.create({
       data: {
@@ -189,6 +190,7 @@ export async function POST(request: NextRequest) {
         panelDiseaseName: panelDisease.name,
         labItems: labItems as unknown as Prisma.InputJsonValue,
         isCorrect,
+        evaluationScore,
         notes,
       },
       select: { id: true, queueNumber: true, createdAt: true },

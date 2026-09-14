@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { DiseaseLabResult } from "@/lib/disease-lab-results";
 import { playClick, playSuccess } from "@/lib/play/sound";
+import { formatPatientCode } from "@/lib/patient-code";
 
 export interface LabQueueOption {
   id: string;
@@ -36,7 +37,7 @@ export interface LabQueueOption {
   pulseBpm: number;
   chronicDiseaseStatus: string;
   chronicDiseaseDetails: string | null;
-  chiefComplaint: string;
+  chiefComplaint: string | null;
   symptomDescription: string;
   notes: string | null;
   createdAt: string;
@@ -295,7 +296,7 @@ export function MedTechLabForm({
                 ส่งผลตรวจของ {saveState.patientName} เรียบร้อยแล้ว ({saveState.itemCount} รายการ)
               </p>
               <p className="mt-0.5 text-sm font-medium text-emerald-700">
-                คิวที่ {saveState.queueNumber ?? saveState.recordId.slice(-8)} ผลแล็บถูกส่งต่อไปยังสถานีแพทย์แล้ว ★
+                รหัสผู้ป่วย {saveState.queueNumber != null ? formatPatientCode(saveState.queueNumber) : saveState.recordId.slice(-8)} ผลแล็บถูกส่งต่อไปยังสถานีแพทย์แล้ว ★
               </p>
             </div>
           </div>
@@ -341,7 +342,7 @@ export function MedTechLabForm({
                   </option>
                   {interviews.map((item) => (
                     <option key={item.id} value={item.id}>
-                      คิวที่ {item.queueNumber ?? "-"}: {item.patientPrefix}{item.patientFirstName} {item.patientLastName} · {item.age} ปี · {item.gender}
+                      รหัสผู้ป่วย {formatPatientCode(item.queueNumber)}: {item.patientPrefix}{item.patientFirstName} {item.patientLastName} · {item.age} ปี · {item.gender}
                     </option>
                   ))}
                 </select>
@@ -362,7 +363,7 @@ export function MedTechLabForm({
                 {/* Basic Demographics */}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="ข้อมูลส่วนตัวผู้ป่วย">
                   {[
-                    ["คิวตรวจ", `คิวที่ ${selectedInterview.queueNumber ?? "-"}`],
+                    ["รหัสผู้ป่วย", formatPatientCode(selectedInterview.queueNumber)],
                     [
                       "ชื่อ-นามสกุล",
                       `${selectedInterview.patientPrefix}${selectedInterview.patientFirstName} ${selectedInterview.patientLastName}`,
@@ -423,20 +424,12 @@ export function MedTechLabForm({
                   </div>
                 </div>
 
-                {/* Complaints and Symptoms from Nurse */}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
-                    <span className="block text-xs font-bold text-slate-400">อาการสำคัญที่มาโรงพยาบาล (CC)</span>
-                    <p className="mt-1 text-sm font-medium leading-relaxed text-slate-800">
-                      {selectedInterview.chiefComplaint}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
-                    <span className="block text-xs font-bold text-slate-400">ประวัติการเจ็บป่วยปัจจุบัน (PI)</span>
-                    <p className="mt-1 text-sm font-medium leading-relaxed text-slate-800">
-                      {selectedInterview.symptomDescription}
-                    </p>
-                  </div>
+                {/* Symptoms supplied by the card room */}
+                <div className="rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+                  <span className="block text-xs font-bold text-slate-400">อาการผู้ป่วย</span>
+                  <p className="mt-1 whitespace-pre-wrap text-sm font-medium leading-relaxed text-slate-800">
+                    {selectedInterview.symptomDescription}
+                  </p>
                 </div>
 
                 {selectedInterview.notes && (

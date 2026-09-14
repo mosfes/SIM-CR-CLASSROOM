@@ -10,8 +10,6 @@ import {
   getRunningSimulationScope,
 } from "@/lib/server/simulation-data";
 
-const CHRONIC_DISEASE_STATUSES = new Set(["NONE", "UNKNOWN", "YES"]);
-
 function jsonError(message: string, status: number) {
   return NextResponse.json(
     { success: false, error: message },
@@ -45,14 +43,6 @@ function requiredText(value: unknown, label: string, maxLength = 191) {
   if (cleanValue.length > maxLength) {
     throw new Error(`${label}ยาวเกินไป`);
   }
-  return cleanValue;
-}
-
-function optionalText(value: unknown, maxLength: number) {
-  if (typeof value !== "string") return null;
-  const cleanValue = value.trim();
-  if (!cleanValue) return null;
-  if (cleanValue.length > maxLength) throw new Error("ข้อความยาวเกินไป");
   return cleanValue;
 }
 
@@ -119,15 +109,6 @@ export async function POST(request: NextRequest) {
     const groupId = requiredText(body.groupId, "ห้องตรวจ");
     const simulationId = requiredText(body.simulationId, "รอบจำลอง");
     const patientCardId = requiredText(body.patientCardId, "บัตรผู้ป่วย");
-    const chronicDiseaseStatus = requiredText(body.chronicDiseaseStatus, "ข้อมูลโรคประจำตัว");
-    const chronicDiseaseDetails = optionalText(body.chronicDiseaseDetails, 2000);
-
-    if (!CHRONIC_DISEASE_STATUSES.has(chronicDiseaseStatus)) {
-      return jsonError("ข้อมูลโรคประจำตัวไม่ถูกต้อง", 400);
-    }
-    if (chronicDiseaseStatus === "YES" && !chronicDiseaseDetails) {
-      return jsonError("กรุณาระบุโรคประจำตัว", 400);
-    }
 
     const weightKg = requiredNumber(body.weightKg, "น้ำหนัก", 1, 500);
     const heightCm = requiredNumber(body.heightCm, "ส่วนสูง", 30, 250);
@@ -137,9 +118,6 @@ export async function POST(request: NextRequest) {
       return jsonError("ความดันตัวบนต้องมากกว่าความดันตัวล่าง", 400);
     }
     const pulseBpm = requiredNumber(body.pulseBpm, "ชีพจร", 20, 250, true);
-    const chiefComplaint = requiredText(body.chiefComplaint, "สาเหตุที่มาพบแพทย์", 2000);
-    const symptomDescription = requiredText(body.symptomDescription, "ลักษณะอาการ", 5000);
-    const notes = optionalText(body.notes, 5000);
 
     const [nurse, classroom, group, patientCard, simulation] = await Promise.all([
       prisma.user.findFirst({
@@ -171,6 +149,7 @@ export async function POST(request: NextRequest) {
           age: true,
           gender: true,
           maritalStatus: true,
+          diseaseCode: true,
         },
       }),
       getRunningSimulationParticipant({
@@ -189,14 +168,20 @@ export async function POST(request: NextRequest) {
       return jsonError("บัตรผู้ป่วยนี้ถูกซักประวัติแล้ว หรือไม่อยู่ในห้องตรวจนี้", 409);
     }
 
+    const disease = patientCard.diseaseCode
+      ? await prisma.disease.findFirst({
+          where: { code: patientCard.diseaseCode, isActive: true },
+          select: { symptoms: true },
+        })
+      : null;
+    const symptomDescription = disease?.symptoms.trim();
+    if (!symptomDescription) {
+      return jsonError("ไม่พบอาการของโรคในบัตรผู้ป่วย กรุณาให้ห้องบัตรเลือกโรคใหม่", 409);
+    }
+
     const interview = await prisma.nurseInterview.create({
       data: {
-        patientCardId: patientCard.id,
         queueNumber: patientCard.queueNumber,
-        nurseId: nurse.id,
-        classroomId: classroom.id,
-        groupId: group.id,
-        simulationId,
         nurseName: nurse.name,
         classroomName: classroom.name,
         groupName: group.name,
@@ -211,11 +196,18 @@ export async function POST(request: NextRequest) {
         systolicBp,
         diastolicBp,
         pulseBpm,
-        chronicDiseaseStatus,
-        chronicDiseaseDetails: chronicDiseaseStatus === "YES" ? chronicDiseaseDetails : null,
-        chiefComplaint,
+        chronicDiseaseStatus: "UNKNOWN",
+        chronicDiseaseDetails: null,
+        // Keep the legacy required column populated for deployments with an older client.
+        // The nurse flow no longer collects or displays a separate chief complaint.
+        chiefComplaint: symptomDescription,
         symptomDescription,
-        notes,
+        notes: null,
+        patientCard: { connect: { id: patientCard.id } },
+        nurse: { connect: { id: nurse.id } },
+        classroom: { connect: { id: classroom.id } },
+        group: { connect: { id: group.id } },
+        simulation: { connect: { id: simulation.id } },
       },
       select: { id: true, queueNumber: true, createdAt: true },
     });

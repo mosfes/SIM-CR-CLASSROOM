@@ -15,8 +15,10 @@ import {
   Pill,
   Play,
   LoaderCircle,
+  Square,
   Sun,
   Stethoscope,
+  Trophy,
 } from "lucide-react";
 import { getPlayRole, type PlayRole, type PlayRoleId } from "@/lib/play/roles";
 import { RoomQrCode } from "@/components/play/room-qr-code";
@@ -108,6 +110,21 @@ interface Participant {
   student: { name: string };
 }
 
+interface GroupResults {
+  diagnosedCount: number;
+  correctCount: number;
+  wrongCount: number;
+  successRate: number;
+  labCount: number;
+  labCorrectCount: number;
+  labWrongCount: number;
+  labSuccessRate: number;
+  doctorScore: number;
+  labScore: number;
+  totalScore: number;
+  topScorers: Array<{ studentId: string; name: string; score: number }>;
+}
+
 interface ProjectorSnapshot {
   id: string;
   roomCode: string;
@@ -126,6 +143,7 @@ interface ProjectorSnapshot {
       doctorDiagnoses: number;
       pharmacyDispenses: number;
     };
+    results: GroupResults | null;
   }>;
 }
 
@@ -146,6 +164,12 @@ const GROUP_ACCENTS = [
   { badge: "bg-rose-400 text-rose-950", ring: "ring-rose-300/60" },
 ];
 
+const RANK_BADGES = [
+  "bg-amber-400 text-amber-950",
+  "bg-slate-300 text-slate-800",
+  "bg-orange-400 text-orange-950",
+];
+
 function RoleAvatar({ role, size = "md" }: { role: PlayRole | undefined; size?: "sm" | "md" | "lg" }) {
   const sizeClass = size === "sm" ? "h-6 w-6" : size === "lg" ? "h-12 w-12" : "h-10 w-10";
   const iconClass = size === "sm" ? "h-3.5 w-3.5" : size === "lg" ? "h-6 w-6" : "h-5 w-5";
@@ -160,11 +184,138 @@ function RoleAvatar({ role, size = "md" }: { role: PlayRole | undefined; size?: 
   );
 }
 
+const CHART_CORRECT_COLOR = "#34d399";
+const CHART_WRONG_COLOR = "#fb7185";
+
+function OverallResultsDonut({
+  correct,
+  wrong,
+  themeStyles,
+}: {
+  correct: number;
+  wrong: number;
+  themeStyles: (typeof PROJECTOR_THEME_STYLES)[keyof typeof PROJECTOR_THEME_STYLES];
+}) {
+  const total = correct + wrong;
+  const radius = 42;
+  const circumference = 2 * Math.PI * radius;
+  const correctLength = total > 0 ? (correct / total) * circumference : 0;
+  const wrongLength = total > 0 ? (wrong / total) * circumference : 0;
+  const successRate = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+  return (
+    <div className="flex shrink-0 items-center gap-4">
+      <svg viewBox="0 0 100 100" width="112" height="112" role="img" aria-label={`อัตราวินิจฉัยถูกต้องรวม ${successRate} เปอร์เซ็นต์`}>
+        <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="12" className="text-slate-400/25" />
+        {total > 0 && (
+          <>
+            <circle
+              cx="50"
+              cy="50"
+              r={radius}
+              fill="none"
+              stroke={CHART_CORRECT_COLOR}
+              strokeWidth="12"
+              strokeLinecap="round"
+              strokeDasharray={`${correctLength} ${circumference - correctLength}`}
+              transform="rotate(-90 50 50)"
+            />
+            <circle
+              cx="50"
+              cy="50"
+              r={radius}
+              fill="none"
+              stroke={CHART_WRONG_COLOR}
+              strokeWidth="12"
+              strokeLinecap="round"
+              strokeDasharray={`${wrongLength} ${circumference - wrongLength}`}
+              strokeDashoffset={-correctLength}
+              transform="rotate(-90 50 50)"
+            />
+          </>
+        )}
+        <text x="50" y="47" textAnchor="middle" className="fill-current text-[22px] font-black">
+          {successRate}%
+        </text>
+        <text x="50" y="64" textAnchor="middle" className={`fill-current text-[9px] font-bold ${themeStyles.secondary}`}>
+          สำเร็จรวม
+        </text>
+      </svg>
+      <div className="flex flex-col gap-1.5 text-sm font-bold">
+        <span className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_CORRECT_COLOR }} />
+          แพทย์ตอบถูก {correct} ครั้ง
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_WRONG_COLOR }} />
+          แพทย์ตอบผิด {wrong} ครั้ง
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function GroupScoreLeaderboard({
+  bars,
+  themeStyles,
+}: {
+  bars: Array<{
+    id: string;
+    name: string;
+    score: number;
+    successRate: number;
+    correctCount: number;
+    wrongCount: number;
+    doctorScore: number;
+    labCorrectCount: number;
+    labWrongCount: number;
+    labScore: number;
+    accentBadge: string;
+  }>;
+  themeStyles: (typeof PROJECTOR_THEME_STYLES)[keyof typeof PROJECTOR_THEME_STYLES];
+}) {
+  const maxScore = Math.max(1, ...bars.map((bar) => bar.score));
+
+  return (
+    <div className="flex flex-1 flex-col gap-3">
+      {bars.map((bar) => (
+        <div key={bar.id} className="flex flex-col gap-1">
+          <div className="flex items-center gap-3">
+            <span className="w-24 shrink-0 truncate text-sm font-bold sm:w-32">{bar.name}</span>
+            <div className={`h-6 min-w-0 flex-1 overflow-hidden rounded-full ${themeStyles.stat}`}>
+              <div
+                className={`flex h-full items-center justify-end rounded-full px-2 text-xs font-black ${bar.accentBadge}`}
+                style={{ width: `${Math.max(8, (bar.score / maxScore) * 100)}%` }}
+              >
+                {bar.score} คะแนน
+              </div>
+            </div>
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${themeStyles.stat} ${themeStyles.secondary}`}>
+              แม่นยำ {bar.successRate}%
+            </span>
+          </div>
+          <div className={`grid grid-cols-1 gap-x-4 gap-y-0.5 pl-[calc(6rem+0.75rem)] text-[11px] font-semibold sm:grid-cols-2 sm:pl-[calc(8rem+0.75rem)] ${themeStyles.secondary}`}>
+            <span>
+              แพทย์: ถูก <span style={{ color: CHART_CORRECT_COLOR }}>{bar.correctCount}</span> ผิด{" "}
+              <span style={{ color: CHART_WRONG_COLOR }}>{bar.wrongCount}</span> · {bar.doctorScore} คะแนน
+            </span>
+            <span>
+              เทคนิคการแพทย์: ถูก <span style={{ color: CHART_CORRECT_COLOR }}>{bar.labCorrectCount}</span> ผิด{" "}
+              <span style={{ color: CHART_WRONG_COLOR }}>{bar.labWrongCount}</span> · {bar.labScore} คะแนน
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function ProjectorBoard({ roomCode }: { roomCode: string }) {
   const [snapshot, setSnapshot] = useState<ProjectorSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [canControl, setCanControl] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [ending, setEnding] = useState(false);
   const [controlError, setControlError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
@@ -295,6 +446,30 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
     }
   }
 
+  async function handleEndGame() {
+    if (!snapshot || ending) return;
+
+    try {
+      setEnding(true);
+      setControlError(null);
+      const response = await fetch(`/api/admin/simulations/${snapshot.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "END" }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "ไม่สามารถสิ้นสุดเกมได้");
+      }
+      setSnapshot(result.data as ProjectorSnapshot);
+      setError(null);
+    } catch (endError) {
+      setControlError(endError instanceof Error ? endError.message : "ไม่สามารถสิ้นสุดเกมได้");
+    } finally {
+      setEnding(false);
+    }
+  }
+
   const themeStyles = PROJECTOR_THEME_STYLES[theme];
   const isDarkTheme = theme === "dark";
 
@@ -309,6 +484,37 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
   const isLobby = snapshot.status === "LOBBY";
   const isEnded = snapshot.status === "ENDED";
   const recentParticipants = [...snapshot.participants].reverse();
+
+  const overallResults = isEnded
+    ? snapshot.groups.reduce(
+        (totals, group) => {
+          if (!group.results) return totals;
+          totals.correct += group.results.correctCount;
+          totals.wrong += group.results.wrongCount;
+          totals.score += group.results.totalScore;
+          return totals;
+        },
+        { correct: 0, wrong: 0, score: 0 },
+      )
+    : null;
+
+  const leaderboardBars = isEnded
+    ? snapshot.groups
+        .map((group, groupIndex) => ({
+          id: group.id,
+          name: group.name,
+          score: group.results?.totalScore ?? 0,
+          successRate: group.results?.successRate ?? 0,
+          correctCount: group.results?.correctCount ?? 0,
+          wrongCount: group.results?.wrongCount ?? 0,
+          doctorScore: group.results?.doctorScore ?? 0,
+          labCorrectCount: group.results?.labCorrectCount ?? 0,
+          labWrongCount: group.results?.labWrongCount ?? 0,
+          labScore: group.results?.labScore ?? 0,
+          accentBadge: GROUP_ACCENTS[groupIndex % GROUP_ACCENTS.length].badge,
+        }))
+        .sort((a, b) => b.score - a.score)
+    : [];
 
   return (
     <main data-theme={theme} className={`min-h-screen overflow-hidden px-6 py-7 transition-colors duration-300 lg:px-10 lg:py-9 ${themeStyles.canvas}`}>
@@ -421,7 +627,10 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
                           return (
                             <div key={group.id} className={`rounded-2xl border p-5 ring-1 ${themeStyles.item} ${accent.ring}`}>
                               <div className="mb-4 flex items-center justify-between gap-2">
-                                <h3 className="truncate text-base font-black uppercase tracking-wide">{group.name}</h3>
+                                <h3 className="flex min-w-0 items-center gap-2 truncate text-base font-black uppercase tracking-wide">
+                                  <DoorOpen className="h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />
+                                  <span className="truncate">{group.name}</span>
+                                </h3>
                                 <span className={`shrink-0 rounded-lg px-2.5 py-1 text-sm font-black ${accent.badge}`}>{group.participants.length} คน</span>
                               </div>
                               {group.participants.length === 0 ? (
@@ -454,8 +663,125 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
           </section>
         ) : (
           <section className="flex-1 py-7">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">{isEnded ? "สรุปรอบจำลอง" : "การทำงานของแต่ละห้องตรวจ"}</h2><p className={`mt-1 text-sm ${themeStyles.subtle}`}>{isEnded ? "รอบฝึกสิ้นสุดแล้ว" : "อัปเดตสดจากสถานีของนักเรียน"}</p></div><div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black ${isEnded ? "bg-slate-700 text-slate-200" : "bg-emerald-400 text-emerald-950"}`}>{isEnded ? <CheckCircle2 className="h-4 w-4" /> : <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-950" />}{isEnded ? "สิ้นสุดเกม" : "เกมกำลังดำเนินอยู่"}</div></div>
-            <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">{snapshot.groups.map((group) => <article key={group.id} className={`rounded-3xl border p-5 backdrop-blur-sm ${themeStyles.panel}`}><div className="flex items-start justify-between gap-3"><div><h3 className="text-xl font-black">{group.name}</h3><p className={`mt-1 text-sm ${themeStyles.secondary}`}>{group.participants.length} คนประจำห้องตรวจ</p></div><span className="rounded-xl bg-emerald-400 px-3 py-2 text-sm font-black text-emerald-950">{group.work.pharmacyDispenses} เคสเสร็จ</span></div><div className="mt-5 grid grid-cols-5 gap-2">{FLOW.map(({ label, Icon, key, tone }) => <div key={key} className={`rounded-2xl px-2 py-3 text-center ${themeStyles.stat}`}><Icon className={`mx-auto h-4 w-4 ${tone}`} /><p className="mt-1 text-xl font-black">{group.work[key]}</p><p className={`mt-0.5 text-[10px] font-bold ${themeStyles.secondary}`}>{label}</p></div>)}</div><div className={`mt-4 flex flex-wrap gap-2 border-t pt-4 ${themeStyles.separator}`}>{group.participants.length === 0 ? <p className={`text-xs ${themeStyles.faint}`}>ยังไม่มีคนประจำห้องตรวจ</p> : group.participants.map((participant) => { const role = getPlayRole(participant.role); return <span key={participant.id} className={`inline-flex items-center gap-1.5 rounded-lg py-1.5 pl-1.5 pr-2.5 text-xs font-semibold ${themeStyles.tag}`}><RoleAvatar role={role} size="sm" />{role?.label ?? participant.role}<span className={`max-w-32 truncate ${themeStyles.tagName}`}>{participant.student.name}</span></span>; })}</div></article>)}</div>
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-2xl font-black"><DoorOpen className="h-6 w-6 text-amber-300" aria-hidden="true" />{isEnded ? "สรุปรอบจำลอง" : "การทำงานของแต่ละห้องตรวจ"}</h2>
+                <p className={`mt-1 text-sm ${themeStyles.subtle}`}>{isEnded ? "รอบฝึกสิ้นสุดแล้ว" : "อัปเดตสดจากสถานีของนักเรียน"}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {canControl && !isEnded && (
+                  <button
+                    type="button"
+                    onClick={() => void handleEndGame()}
+                    disabled={ending}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-rose-500 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-rose-950/20 transition hover:bg-rose-400 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {ending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4 fill-current" />}
+                    {ending ? "กำลังสิ้นสุดเกม..." : "สิ้นสุดเกม"}
+                  </button>
+                )}
+                <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black ${isEnded ? "bg-slate-700 text-slate-200" : "bg-emerald-400 text-emerald-950"}`}>{isEnded ? <CheckCircle2 className="h-4 w-4" /> : <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-950" />}{isEnded ? "สิ้นสุดเกม" : "เกมกำลังดำเนินอยู่"}</div>
+              </div>
+            </div>
+            {controlError && <p role="alert" className={`mb-4 rounded-xl border px-3 py-2 text-sm font-medium ${themeStyles.errorBox}`}>{controlError}</p>}
+
+            {isEnded && overallResults && (
+              <div className={`mb-6 grid gap-5 rounded-3xl border p-5 backdrop-blur-sm md:grid-cols-[auto_1fr] ${themeStyles.panel}`}>
+                <div>
+                  <p className={`mb-3 text-xs font-bold uppercase tracking-wide ${themeStyles.secondary}`}>ภาพรวมทั้งหมด</p>
+                  <OverallResultsDonut correct={overallResults.correct} wrong={overallResults.wrong} themeStyles={themeStyles} />
+                  <p className="mt-3 text-2xl font-black">
+                    {overallResults.score} <span className={`text-sm font-bold ${themeStyles.secondary}`}>คะแนนรวมทุกกลุ่ม</span>
+                  </p>
+                </div>
+                <div className={`border-t pt-5 md:border-l md:border-t-0 md:pl-6 md:pt-0 ${themeStyles.separator}`}>
+                  <p className={`mb-3 text-xs font-bold uppercase tracking-wide ${themeStyles.secondary}`}>เปรียบเทียบคะแนนรายกลุ่ม</p>
+                  <GroupScoreLeaderboard bars={leaderboardBars} themeStyles={themeStyles} />
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">
+              {snapshot.groups.map((group, groupIndex) => {
+                const accent = GROUP_ACCENTS[groupIndex % GROUP_ACCENTS.length];
+                return (
+                  <article key={group.id} className={`rounded-3xl border p-5 backdrop-blur-sm ${themeStyles.panel} ${isEnded ? `ring-1 ${accent.ring}` : ""}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="flex items-center gap-2 text-xl font-black"><DoorOpen className="h-5 w-5 shrink-0 text-amber-300" aria-hidden="true" />{group.name}</h3>
+                        <p className={`mt-1 text-sm ${themeStyles.secondary}`}>{group.participants.length} คนประจำห้องตรวจ</p>
+                      </div>
+                      <span className="rounded-xl bg-emerald-400 px-3 py-2 text-sm font-black text-emerald-950">{group.work.pharmacyDispenses} เคสเสร็จ</span>
+                    </div>
+
+                    {isEnded && group.results ? (
+                      <div className="mt-5 space-y-4">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="rounded-2xl bg-amber-400 px-2 py-3 text-center text-amber-950">
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-amber-950/70">คะแนนรวมทีม</p>
+                            <p className="mt-1 text-2xl font-black">{group.results.totalScore}</p>
+                          </div>
+                          <div className={`rounded-2xl px-2 py-3 text-center ${themeStyles.stat}`}>
+                            <p className={`text-[10px] font-bold uppercase tracking-wide ${themeStyles.secondary}`}>แพทย์</p>
+                            <p className="mt-1 text-2xl font-black">{group.results.doctorScore}</p>
+                          </div>
+                          <div className={`rounded-2xl px-2 py-3 text-center ${themeStyles.stat}`}>
+                            <p className={`text-[10px] font-bold uppercase tracking-wide ${themeStyles.secondary}`}>เทคนิคการแพทย์</p>
+                            <p className="mt-1 text-2xl font-black">{group.results.labScore}</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide ${themeStyles.secondary}`}>
+                            <Trophy className="h-3.5 w-3.5 text-amber-300" /> ท็อป 3 คะแนนสูงสุด
+                          </p>
+                          {group.results.topScorers.length === 0 ? (
+                            <p className={`mt-2 text-xs ${themeStyles.faint}`}>ยังไม่มีคะแนนในห้องตรวจนี้</p>
+                          ) : (
+                            <div className="mt-2 space-y-1.5">
+                              {group.results.topScorers.map((scorer, rankIndex) => (
+                                <div key={scorer.studentId} className={`flex items-center justify-between rounded-xl px-3 py-2 ${themeStyles.item}`}>
+                                  <span className="flex min-w-0 items-center gap-2">
+                                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${RANK_BADGES[rankIndex]}`}>{rankIndex + 1}</span>
+                                    <span className="truncate text-sm font-bold">{scorer.name}</span>
+                                  </span>
+                                  <span className="shrink-0 text-sm font-black">{scorer.score} คะแนน</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-5 grid grid-cols-5 gap-2">{FLOW.map(({ label, Icon, key, tone }) => <div key={key} className={`rounded-2xl px-2 py-3 text-center ${themeStyles.stat}`}><Icon className={`mx-auto h-4 w-4 ${tone}`} /><p className="mt-1 text-xl font-black">{group.work[key]}</p><p className={`mt-0.5 text-[10px] font-bold ${themeStyles.secondary}`}>{label}</p></div>)}</div>
+                    )}
+
+                    <div className={`mt-4 flex flex-wrap gap-2 border-t pt-4 ${themeStyles.separator}`}>
+                      {group.participants.length === 0 ? (
+                        <p className={`text-xs ${themeStyles.faint}`}>ยังไม่มีคนประจำห้องตรวจ</p>
+                      ) : isEnded ? (
+                        group.participants.map((participant) => (
+                          <span key={participant.id} className={`inline-flex items-center rounded-lg px-2.5 py-1.5 text-xs font-semibold ${themeStyles.tag}`}>
+                            {participant.student.name}
+                          </span>
+                        ))
+                      ) : (
+                        group.participants.map((participant) => {
+                          const role = getPlayRole(participant.role);
+                          return (
+                            <span key={participant.id} className={`inline-flex items-center gap-1.5 rounded-lg py-1.5 pl-1.5 pr-2.5 text-xs font-semibold ${themeStyles.tag}`}>
+                              <RoleAvatar role={role} size="sm" />
+                              {role?.label ?? participant.role}
+                              <span className={`max-w-32 truncate ${themeStyles.tagName}`}>{participant.student.name}</span>
+                            </span>
+                          );
+                        })
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
           </section>
         )}
       </div>

@@ -245,17 +245,17 @@ export function SimulationsContent() {
       {notice && <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{notice}</p>}
 
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0 flex-1">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-end">
+          <div className="min-w-0">
             <p className="text-sm font-bold text-slate-900">สร้างรอบจำลองใหม่</p>
             <p className="mt-1 text-xs text-slate-500">เลือกห้องเรียนเพียงครั้งเดียว นักเรียนจะใช้เลขห้องเข้าร่วม แล้วเลือกห้องตรวจและบทบาทด้วยตนเอง</p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
             <label className="sr-only" htmlFor="simulation-classroom">ห้องเรียน</label>
-            <select id="simulation-classroom" value={selectedClassroomId} onChange={(event) => setSelectedClassroomId(event.target.value)} disabled={loading || creating} className="h-11 min-w-52 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-red-400 focus:ring-4 focus:ring-red-500/10">
+            <select id="simulation-classroom" value={selectedClassroomId} onChange={(event) => setSelectedClassroomId(event.target.value)} disabled={loading || creating} className="h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-red-400 focus:ring-4 focus:ring-red-500/10">
               {classrooms.length === 0 ? <option value="">ยังไม่มีห้องเรียนที่พร้อมใช้</option> : classrooms.map((classroom) => <option key={classroom.id} value={classroom.id}>{classroom.name}</option>)}
             </select>
-            <button type="button" onClick={handleCreate} disabled={!selectedClassroom || creating || loading} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-bold text-white shadow-md shadow-red-500/20 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="button" onClick={handleCreate} disabled={!selectedClassroom || creating || loading} className="inline-flex h-11 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-red-600 px-4 text-sm font-bold text-white shadow-md shadow-red-500/20 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
               {creating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               {creating ? "กำลังสร้าง..." : "สร้างและสุ่มเลขห้อง"}
             </button>
@@ -303,7 +303,6 @@ export function SimulationsContent() {
                 {snapshot.participants.length === 0 ? <div className="rounded-2xl border-2 border-dashed border-slate-200 px-5 py-9 text-center text-sm text-slate-400">กำลังรอนักเรียนใส่เลขห้องและเลือกบทบาท</div> : <div className="grid gap-2 sm:grid-cols-2">{snapshot.participants.map((participant) => { const role = getPlayRole(participant.role); return <div key={participant.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"><span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-slate-800">{participant.student.name}</span><span className="block truncate text-xs text-slate-500">{snapshot.groups.find((group) => group.id === participant.groupId)?.name ?? "ห้องตรวจไม่ระบุ"} · {role?.label ?? participant.role}</span></span><CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" /></div>; })}</div>}
               </div>
 
-              {snapshot.status !== "LOBBY" && <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><div className="mb-4"><h2 className="font-bold text-slate-900">การทำงานของแต่ละห้องตรวจ</h2><p className="mt-1 text-xs text-slate-500">จำนวนงานที่ผ่านแต่ละสถานีในรอบจำลองนี้</p></div><div className="grid gap-4 lg:grid-cols-2">{snapshot.groups.map((group) => <article key={group.id} className="rounded-2xl border border-slate-200 p-4"><div className="flex items-start justify-between gap-3"><div><h3 className="font-bold text-slate-800">{group.name}</h3><p className="mt-1 text-xs text-slate-400">{group.participants.length} คนประจำห้องตรวจ</p></div><span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">เสร็จ {group.work.pharmacyDispenses} เคส</span></div><div className="mt-4 grid grid-cols-5 gap-1 text-center">{[["บัตร", group.work.patientCards], ["ซัก", group.work.nurseInterviews], ["แล็บ", group.work.labResults], ["หมอ", group.work.doctorDiagnoses], ["ยา", group.work.pharmacyDispenses]].map(([label, value]) => <div key={String(label)} className="rounded-xl bg-slate-50 p-2"><p className="text-base font-black text-slate-800">{value}</p><p className="mt-0.5 text-[10px] font-bold text-slate-400">{label}</p></div>)}</div></article>)}</div></div>}
             </div>
           )}
         </section>

@@ -254,7 +254,7 @@ model NurseInterview {
   pulseBpm              Int
   chronicDiseaseStatus  String
   chronicDiseaseDetails String?           @db.Text
-  chiefComplaint        String            @db.Text
+  chiefComplaint        String?           @db.Text
   symptomDescription    String            @db.Text
   notes                 String?           @db.Text
   createdAt             DateTime          @default(now())
@@ -299,6 +299,7 @@ model LabResult {
   panelDiseaseName String
   labItems         Json // [{ name, result, referenceRange }] สำเนาผลตรวจ ณ เวลาที่ส่ง
   isCorrect        Boolean? // ชุดตรวจตรงกับเฉลยของห้องบัตรหรือไม่ (ใช้ในหน้ามอนิเตอร์ครู)
+  evaluationScore  Int? // คะแนน: ถูก 2 คะแนน, ผิด 0 คะแนน
   notes            String?          @db.Text
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt

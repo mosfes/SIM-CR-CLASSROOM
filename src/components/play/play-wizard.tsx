@@ -133,9 +133,6 @@ export function PlayWizard() {
       }
 
       const foundSession = result.data as SimulationSession;
-      if (foundSession.status === "RUNNING") {
-        throw new Error("เกมในห้องนี้เริ่มไปแล้ว จึงไม่สามารถเข้าร่วมระหว่างทางได้");
-      }
       if (foundSession.status === "ENDED") {
         throw new Error("รอบจำลองนี้สิ้นสุดแล้ว กรุณารอเลขห้องใหม่จากครู");
       }
@@ -395,7 +392,11 @@ export function PlayWizard() {
             <div className="mb-6">
               <span className="rounded-full border border-rose-100 bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600">ขั้นตอนที่ 3 จาก 3</span>
               <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">เลือกห้องตรวจและบทบาท</h1>
-              <p className="mt-1 text-sm text-slate-500">ครูจะเห็นชื่อของน้องทันที และจะเริ่มเกมเมื่อทุกคนพร้อม</p>
+              <p className="mt-1 text-sm text-slate-500">
+                {session.status === "RUNNING"
+                  ? "เกมกำลังดำเนินอยู่ เลือกห้องตรวจและบทบาทเพื่อเข้าเกมได้ทันที"
+                  : "ครูจะเห็นชื่อของน้องทันที และจะเริ่มเกมเมื่อทุกคนพร้อม"}
+              </p>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-[0.9fr_1.3fr]">
@@ -476,7 +477,13 @@ export function PlayWizard() {
                 onMouseEnter={playHover}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                <span>{joining ? "กำลังเข้าห้อง..." : "ยืนยันและรอครูเริ่มเกม"}</span>
+                <span>
+                  {joining
+                    ? "กำลังเข้าห้อง..."
+                    : session.status === "RUNNING"
+                      ? "ยืนยันและเข้าเกม"
+                      : "ยืนยันและรอครูเริ่มเกม"}
+                </span>
                 {!joining && <ArrowRight className="h-4 w-4" />}
               </button>
             </div>

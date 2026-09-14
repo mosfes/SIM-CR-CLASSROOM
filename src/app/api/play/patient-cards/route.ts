@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getDiseaseSymptomsByCodes } from "@/lib/server/play-data";
 import {
   getRunningSimulationParticipant,
   getRunningSimulationScope,
@@ -181,15 +182,19 @@ export async function GET(request: NextRequest) {
         age: true,
         gender: true,
         maritalStatus: true,
+        diseaseCode: true,
         createdAt: true,
       },
     });
 
+    const symptomsByCode = await getDiseaseSymptomsByCodes(cards.map((card) => card.diseaseCode));
+
     return NextResponse.json(
       {
         success: true,
-        data: cards.map((card) => ({
+        data: cards.map(({ diseaseCode, ...card }) => ({
           ...card,
+          symptoms: symptomsByCode.get(diseaseCode?.trim() || "") || null,
           createdAt: card.createdAt.toISOString(),
         })),
       },
@@ -234,7 +239,7 @@ export async function POST(request: NextRequest) {
       return jsonError("กรุณากรอกอายุให้ถูกต้อง", 400);
     }
 
-    const [clerk, classroom, group, simulation] = await Promise.all([
+    const [clerk, classroom, group, disease, simulation] = await Promise.all([
       prisma.user.findFirst({
         where: { id: clerkId, role: "STUDENT", isActive: true },
         select: { id: true, name: true },
@@ -247,6 +252,10 @@ export async function POST(request: NextRequest) {
         where: { id: groupId, classroomId, isActive: true },
         select: { id: true, name: true },
       }),
+      prisma.disease.findFirst({
+        where: { code: diseaseCode, isActive: true },
+        select: { id: true },
+      }),
       getRunningSimulationParticipant({
         simulationId,
         studentId: clerkId,
@@ -258,6 +267,9 @@ export async function POST(request: NextRequest) {
 
     if (!clerk || !classroom || !group || !simulation) {
       return jsonError("ไม่พบข้อมูลผู้บันทึก ห้องเรียน หรือห้องตรวจ กรุณาเลือกใหม่", 400);
+    }
+    if (!disease) {
+      return jsonError("ไม่พบรหัสโรคที่ใช้งานอยู่ กรุณาเลือกจากรายการโรค", 400);
     }
 
     const card = await createPatientCardWithReservedQueue({

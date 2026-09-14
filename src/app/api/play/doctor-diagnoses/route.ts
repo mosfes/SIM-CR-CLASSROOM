@@ -341,15 +341,6 @@ export async function POST(request: NextRequest) {
           id: diagnosisRecord.id,
           queueNumber: diagnosisRecord.queueNumber,
           createdAt: diagnosisRecord.createdAt.toISOString(),
-          evaluation: {
-            isCorrect: isDiseaseCorrect,
-            score: evaluationScore,
-            strengths: aiStrengths,
-            feedback: aiFeedback,
-            diseaseName: disease.name,
-            aiAvailable,
-            aiModel,
-          },
         },
       },
       { status: 201, headers: { "Cache-Control": "no-store" } }

@@ -73,6 +73,22 @@ export async function getGroupById(id: string, classroomId: string) {
     : null;
 }
 
+export async function getDiseaseSymptomsByCodes(codes: Array<string | null | undefined>) {
+  const uniqueCodes = [...new Set(codes.map((code) => code?.trim()).filter(Boolean))] as string[];
+  if (uniqueCodes.length === 0) return new Map<string, string>();
+
+  const diseases = await prisma.disease.findMany({
+    where: { code: { in: uniqueCodes }, isActive: true },
+    select: { code: true, symptoms: true },
+  });
+
+  return new Map(
+    diseases
+      .map((disease) => [disease.code, disease.symptoms.trim()] as const)
+      .filter(([, symptoms]) => symptoms.length > 0),
+  );
+}
+
 export async function getAvailablePatientCards(
   classroomId: string,
   groupId: string,
@@ -96,12 +112,16 @@ export async function getAvailablePatientCards(
       age: true,
       gender: true,
       maritalStatus: true,
+      diseaseCode: true,
       createdAt: true,
     },
   });
 
-  return cards.map((card) => ({
+  const symptomsByCode = await getDiseaseSymptomsByCodes(cards.map((card) => card.diseaseCode));
+
+  return cards.map(({ diseaseCode, ...card }) => ({
     ...card,
+    symptoms: symptomsByCode.get(diseaseCode?.trim() || "") || null,
     createdAt: card.createdAt.toISOString(),
   }));
 }

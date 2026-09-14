@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { playClick, playSuccess } from "@/lib/play/sound";
+import { formatPatientCode } from "@/lib/patient-code";
 
 export interface DiseaseOption {
   id: string;
@@ -178,7 +179,9 @@ export function PatientCardForm({ clerk, classroom, group, simulationId, disease
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
             <div>
               <p className="font-bold">ออกบัตรให้ {saveState.patientName} เรียบร้อยแล้ว</p>
-              <p className="mt-0.5 text-sm font-medium text-emerald-700">คิวที่ {saveState.queueNumber ?? saveState.recordId.slice(-8)} ถูกส่งต่อให้สถานีพยาบาล</p>
+              <p className="mt-0.5 text-sm font-medium text-emerald-700">
+                รหัสผู้ป่วย {saveState.queueNumber != null ? formatPatientCode(saveState.queueNumber) : saveState.recordId.slice(-8)} ถูกส่งต่อให้สถานีพยาบาล
+              </p>
             </div>
           </div>
         )}
@@ -301,19 +304,7 @@ export function PatientCardForm({ clerk, classroom, group, simulationId, disease
                     ) : (
                       <div className="p-3 text-center text-xs text-slate-400">
                         {searchDiseaseTerm.trim() ? (
-                          <div className="space-y-2">
-                            <p>ไม่พบรหัสโรคที่ตรงกับ &ldquo;{searchDiseaseTerm}&rdquo;</p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedDiseaseCode(searchDiseaseTerm.trim());
-                                setIsDiseaseDropdownOpen(false);
-                              }}
-                              className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 border border-amber-200 hover:bg-amber-100 cursor-pointer"
-                            >
-                              ใช้ &ldquo;{searchDiseaseTerm.trim()}&rdquo; เป็นรหัสโรค
-                            </button>
-                          </div>
+                          <p>ไม่พบรหัสโรคที่ตรงกับ &ldquo;{searchDiseaseTerm}&rdquo; กรุณาเลือกจากรายการโรค</p>
                         ) : (
                           <p>ไม่มีข้อมูลโรคในระบบ</p>
                         )}

@@ -22,7 +22,7 @@ export interface DiagnosisEvaluationInput {
     pulseBpm?: number | null;
     chronicDiseaseStatus?: string | null;
     chronicDiseaseDetails?: string | null;
-    chiefComplaint: string;
+    chiefComplaint?: string | null;
     symptomDescription: string;
     nurseNotes?: string | null;
   };
@@ -81,10 +81,9 @@ export async function evaluateDoctorDiagnosisWithAI(
 
 บริบทเคสผู้ป่วย:
 - ผู้ป่วย: ${patient.prefix}${patient.firstName} ${patient.lastName}, อายุ ${patient.age} ปี, เพศ ${patient.gender}
-- อาการสำคัญ (Chief Complaint): ${patient.chiefComplaint}
 - รายละเอียดอาการจากพยาบาล (Symptoms): ${patient.symptomDescription}
 - สัญญาณชีพ: ${vitalsText}
-- โรคประจำตัว: ${patient.chronicDiseaseStatus === "YES" ? patient.chronicDiseaseDetails || "มีโรคประจำตัว" : "ไม่มี"}
+- โรคประจำตัว: ${patient.chronicDiseaseStatus === "YES" ? patient.chronicDiseaseDetails || "มีโรคประจำตัว" : patient.chronicDiseaseStatus === "NONE" ? "ไม่มี" : "ไม่ทราบ"}
 ${patient.nurseNotes ? `- บันทึกพยาบาลเพิ่มเติม: ${patient.nurseNotes}` : ""}
 - ผลตรวจทางห้องปฏิบัติการที่เทคนิคการแพทย์ส่งมา: ${labText}
 ${lab?.notes ? `- หมายเหตุจากห้องปฏิบัติการ: ${lab.notes}` : ""}

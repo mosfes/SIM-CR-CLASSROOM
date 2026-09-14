@@ -148,6 +148,7 @@ export async function GET(
             panelDiseaseName: true,
             labItems: true,
             isCorrect: true,
+            evaluationScore: true,
             notes: true,
             createdAt: true,
             doctorDiagnosis: {
@@ -244,6 +245,18 @@ export async function GET(
     // Calculate Medical Technologist metrics
     const labCorrectCount = labResults.filter((l) => l.isCorrect === true).length;
     const labWithKeyCount = labResults.filter((l) => l.isCorrect !== null).length;
+    const labResultsWithScore = labResults.filter(
+      (l) => typeof l.evaluationScore === "number"
+    );
+    const labAvgScore =
+      labResultsWithScore.length > 0
+        ? Number(
+            (
+              labResultsWithScore.reduce((sum, l) => sum + (l.evaluationScore || 0), 0) /
+              labResultsWithScore.length
+            ).toFixed(1)
+          )
+        : null;
 
     // Calculate Pharmacist metrics
     const pharmacistTotalTablets = pharmacyDispenses.reduce(
@@ -269,6 +282,7 @@ export async function GET(
         correct: labCorrectCount,
         accuracyPercent:
           labWithKeyCount > 0 ? Math.round((labCorrectCount / labWithKeyCount) * 100) : 0,
+        avgScore: labAvgScore,
       },
       doctorStats: {
         total: doctorDiagnoses.length,
@@ -406,6 +420,7 @@ export async function GET(
           panelDiseaseName: item.panelDiseaseName,
           labItems: parseLabResults(item.labItems),
           isCorrect: item.isCorrect,
+          evaluationScore: item.evaluationScore,
           notes: item.notes,
           doctorName: item.doctorDiagnosis?.doctorName || null,
           doctorDisease: item.doctorDiagnosis?.diseaseName || null,

@@ -142,8 +142,8 @@ export async function getSimulationSessionForEntry(roomCode: string) {
 
   if (!session) return null;
 
-  // Names are only needed while students can still join.
-  const students = session.status === "LOBBY" ? await getEntryStudents() : [];
+  // Students can join from the lobby or after the teacher has started the game.
+  const students = session.status === "ENDED" ? [] : await getEntryStudents();
 
   return {
     id: session.id,
@@ -475,6 +475,88 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
   const doctorsByGroup = makeCountMap(doctorDiagnoses);
   const pharmaciesByGroup = makeCountMap(pharmacyDispenses);
 
+  // Only compute the heavier per-student results breakdown once the round has
+  // ended: the projector polls this snapshot every few seconds while running,
+  // and this data is only surfaced in the end-of-game summary screen.
+  const [doctorScoreRows, labScoreRows] =
+    session.status === "ENDED"
+      ? await Promise.all([
+          prisma.doctorDiagnosis.findMany({
+            where: { simulationId },
+            select: {
+              groupId: true,
+              doctorId: true,
+              doctorName: true,
+              isCorrect: true,
+              evaluationScore: true,
+            },
+          }),
+          prisma.labResult.findMany({
+            where: { simulationId },
+            select: {
+              groupId: true,
+              medTechId: true,
+              medTechName: true,
+              isCorrect: true,
+              evaluationScore: true,
+            },
+          }),
+        ])
+      : [[], []];
+
+  const buildGroupResults = (groupId: string) => {
+    const groupDoctorRows = doctorScoreRows.filter((row) => row.groupId === groupId);
+    const groupLabRows = labScoreRows.filter((row) => row.groupId === groupId);
+
+    const diagnosedCount = groupDoctorRows.length;
+    const correctCount = groupDoctorRows.filter((row) => row.isCorrect === true).length;
+    const wrongCount = groupDoctorRows.filter((row) => row.isCorrect === false).length;
+    const successRate = diagnosedCount > 0 ? Math.round((correctCount / diagnosedCount) * 100) : 0;
+
+    const labCount = groupLabRows.length;
+    const labCorrectCount = groupLabRows.filter((row) => row.isCorrect === true).length;
+    const labWrongCount = groupLabRows.filter((row) => row.isCorrect === false).length;
+    const labSuccessRate = labCount > 0 ? Math.round((labCorrectCount / labCount) * 100) : 0;
+
+    const doctorScore = groupDoctorRows.reduce((sum, row) => sum + (row.evaluationScore ?? 0), 0);
+    const labScore = groupLabRows.reduce((sum, row) => sum + (row.evaluationScore ?? 0), 0);
+
+    const scoreByStudent = new Map<string, { name: string; score: number }>();
+    for (const row of groupDoctorRows) {
+      if (!row.doctorId) continue;
+      const entry = scoreByStudent.get(row.doctorId) ?? { name: row.doctorName, score: 0 };
+      entry.score += row.evaluationScore ?? 0;
+      scoreByStudent.set(row.doctorId, entry);
+    }
+    for (const row of groupLabRows) {
+      if (!row.medTechId) continue;
+      const entry = scoreByStudent.get(row.medTechId) ?? { name: row.medTechName, score: 0 };
+      entry.score += row.evaluationScore ?? 0;
+      scoreByStudent.set(row.medTechId, entry);
+    }
+
+    const totalScore = doctorScore + labScore;
+    const topScorers = Array.from(scoreByStudent.entries())
+      .map(([studentId, { name, score }]) => ({ studentId, name, score }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    return {
+      diagnosedCount,
+      correctCount,
+      wrongCount,
+      successRate,
+      labCount,
+      labCorrectCount,
+      labWrongCount,
+      labSuccessRate,
+      doctorScore,
+      labScore,
+      totalScore,
+      topScorers,
+    };
+  };
+
   const displayGroups = session.classroom.groups.map((group) => ({
     ...group,
     name: formatGroupNameForDisplay(group.name),
@@ -516,6 +598,7 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
           doctorDiagnoses: doctorsByGroup.get(group.id) ?? 0,
           pharmacyDispenses: pharmaciesByGroup.get(group.id) ?? 0,
         },
+        results: session.status === "ENDED" ? buildGroupResults(group.id) : null,
       };
     }),
   };

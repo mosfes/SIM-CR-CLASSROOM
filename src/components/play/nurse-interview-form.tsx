@@ -15,6 +15,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { playClick, playSuccess } from "@/lib/play/sound";
+import { formatPatientCode } from "@/lib/patient-code";
 
 interface NurseInterviewFormProps {
   nurse: { id: string; name: string; studentId: string | null };
@@ -33,6 +34,7 @@ interface PatientCardOption {
   age: number;
   gender: string;
   maritalStatus: string;
+  symptoms: string | null;
   createdAt: string;
 }
 
@@ -44,9 +46,6 @@ type SaveState =
 
 const fieldClass =
   "mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-base font-medium text-slate-900 outline-none transition placeholder:text-slate-300 hover:border-emerald-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100";
-
-const textareaClass =
-  "mt-1.5 w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-base font-medium leading-7 text-slate-900 outline-none transition placeholder:text-slate-300 hover:border-emerald-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100";
 
 function FieldLabel({ children, required = false }: { children: React.ReactNode; required?: boolean }) {
   return (
@@ -90,7 +89,6 @@ export function NurseInterviewForm({
   initialPatientCards,
 }: NurseInterviewFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [chronicDiseaseStatus, setChronicDiseaseStatus] = useState("NONE");
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
   const [patientCards, setPatientCards] = useState(initialPatientCards);
   const [selectedPatientCardId, setSelectedPatientCardId] = useState("");
@@ -130,6 +128,11 @@ export function NurseInterviewForm({
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    if (!selectedPatientCard?.symptoms) {
+      setSaveState({ status: "error", message: "บัตรผู้ป่วยนี้ยังไม่มีข้อมูลอาการจากโรค กรุณาให้ห้องบัตรเลือกโรคใหม่" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setSaveState({ status: "saving" });
 
     const formData = new FormData(event.currentTarget);
@@ -144,11 +147,6 @@ export function NurseInterviewForm({
       systolicBp: formData.get("systolicBp"),
       diastolicBp: formData.get("diastolicBp"),
       pulseBpm: formData.get("pulseBpm"),
-      chronicDiseaseStatus,
-      chronicDiseaseDetails: formData.get("chronicDiseaseDetails"),
-      chiefComplaint: formData.get("chiefComplaint"),
-      symptomDescription: formData.get("symptomDescription"),
-      notes: formData.get("notes"),
     };
 
     try {
@@ -165,7 +163,6 @@ export function NurseInterviewForm({
 
       playSuccess();
       formRef.current?.reset();
-      setChronicDiseaseStatus("NONE");
       setPatientCards((cards) => cards.filter((card) => card.id !== selectedPatientCardId));
       setSelectedPatientCardId("");
       setSaveState({
@@ -185,7 +182,6 @@ export function NurseInterviewForm({
   function handleReset() {
     playClick();
     formRef.current?.reset();
-    setChronicDiseaseStatus("NONE");
     setSelectedPatientCardId("");
     setSaveState({ status: "idle" });
   }
@@ -239,7 +235,7 @@ export function NurseInterviewForm({
             <div>
               <p className="font-bold">บันทึกข้อมูลเรียบร้อยแล้ว</p>
               <p className="mt-0.5 text-sm font-medium text-emerald-700">
-                คิวที่ {saveState.queueNumber ?? saveState.recordId.slice(-8)} บันทึกเรียบร้อย ส่งต่อไปยังสถานีเทคนิคการแพทย์แล้ว
+                รหัสผู้ป่วย {saveState.queueNumber != null ? formatPatientCode(saveState.queueNumber) : saveState.recordId.slice(-8)} บันทึกเรียบร้อย ส่งต่อไปยังสถานีเทคนิคการแพทย์แล้ว
               </p>
             </div>
           </div>
@@ -284,7 +280,7 @@ export function NurseInterviewForm({
                   </option>
                   {patientCards.map((card) => (
                     <option key={card.id} value={card.id}>
-                      คิวที่ {card.queueNumber ?? "-"}: {card.patientPrefix}{card.patientFirstName} {card.patientLastName} · {card.age} ปี · {card.gender} · {card.maritalStatus}
+                      รหัสผู้ป่วย {formatPatientCode(card.queueNumber)}: {card.patientPrefix}{card.patientFirstName} {card.patientLastName} · {card.age} ปี · {card.gender} · {card.maritalStatus}
                     </option>
                   ))}
                 </select>
@@ -301,23 +297,31 @@ export function NurseInterviewForm({
             </div>
 
             {selectedPatientCard ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="ข้อมูลจากห้องบัตร">
-                {[
-                  ["คิวตรวจ", `คิวที่ ${selectedPatientCard.queueNumber ?? "-"}`],
-                  [
-                    "ชื่อ-นามสกุล",
-                    `${selectedPatientCard.patientPrefix}${selectedPatientCard.patientFirstName} ${selectedPatientCard.patientLastName}`,
-                  ],
-                  ["อายุ", `${selectedPatientCard.age} ปี`],
-                  ["เพศ", selectedPatientCard.gender],
-                  ["สถานภาพ", selectedPatientCard.maritalStatus],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-xl border border-emerald-100 bg-white px-3.5 py-3 shadow-sm">
-                    <span className="block text-xs font-bold text-slate-400">{label}</span>
-                    <span className="mt-0.5 block font-bold text-slate-900">{value}</span>
-                  </div>
-                ))}
-              </div>
+              <>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="ข้อมูลจากห้องบัตร">
+                  {[
+                    ["รหัสผู้ป่วย", formatPatientCode(selectedPatientCard.queueNumber)],
+                    [
+                      "ชื่อ-นามสกุล",
+                      `${selectedPatientCard.patientPrefix}${selectedPatientCard.patientFirstName} ${selectedPatientCard.patientLastName}`,
+                    ],
+                    ["อายุ", `${selectedPatientCard.age} ปี`],
+                    ["เพศ", selectedPatientCard.gender],
+                    ["สถานภาพ", selectedPatientCard.maritalStatus],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-xl border border-emerald-100 bg-white px-3.5 py-3 shadow-sm">
+                      <span className="block text-xs font-bold text-slate-400">{label}</span>
+                      <span className="mt-0.5 block font-bold text-slate-900">{value}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 rounded-xl border border-amber-200 bg-white px-3.5 py-3 shadow-sm">
+                  <span className="block text-xs font-bold text-slate-400">อาการจากโรค</span>
+                  <span className="mt-1 block whitespace-pre-wrap text-sm font-medium leading-relaxed text-slate-800">
+                    {selectedPatientCard.symptoms || "ไม่พบข้อมูลอาการของโรค"}
+                  </span>
+                </div>
+              </>
             ) : (
               <div className="mt-4 flex items-start gap-2 rounded-xl border border-dashed border-emerald-200 bg-white/70 p-3 text-sm font-medium text-slate-500">
                 <IdCard className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
@@ -334,7 +338,7 @@ export function NurseInterviewForm({
             icon={Activity}
             number="2"
             title="สัญญาณชีพ"
-            description="วัดและบันทึกค่าที่ได้จากผู้ป่วย"
+            description="กรอกเฉพาะค่าวัดจากผู้ป่วย แล้วกดส่งต่อ"
           />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label>
@@ -374,55 +378,15 @@ export function NurseInterviewForm({
           <SectionHeading
             icon={Stethoscope}
             number="3"
-            title="ประวัติการเจ็บป่วย"
-            description="ฟังคำตอบของผู้ป่วยแล้วสรุปด้วยภาษาที่ชัดเจน"
+            title="อาการผู้ป่วย"
+            description="ระบบดึงอาการจากโรคที่ห้องบัตรเลือกไว้ให้อัตโนมัติ ไม่ต้องพิมพ์ซ้ำ"
           />
-
-          <fieldset>
-            <legend><FieldLabel required>โรคประจำตัว</FieldLabel></legend>
-            <div className="mt-2 grid gap-2 sm:grid-cols-3">
-              {[
-                { value: "NONE", label: "ไม่มี" },
-                { value: "UNKNOWN", label: "ไม่ทราบ" },
-                { value: "YES", label: "มีโรคประจำตัว" },
-              ].map((option) => (
-                <label key={option.value} className="cursor-pointer">
-                  <input
-                    className="peer sr-only"
-                    type="radio"
-                    name="chronicDiseaseStatus"
-                    value={option.value}
-                    checked={chronicDiseaseStatus === option.value}
-                    onChange={() => setChronicDiseaseStatus(option.value)}
-                  />
-                  <span className="flex min-h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 transition hover:border-emerald-300 peer-checked:border-emerald-600 peer-checked:bg-emerald-50 peer-checked:text-emerald-800 peer-focus-visible:ring-4 peer-focus-visible:ring-emerald-100">
-                    {option.label}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          {chronicDiseaseStatus === "YES" && (
-            <label className="mt-4 block">
-              <FieldLabel required>ระบุโรคประจำตัว</FieldLabel>
-              <input name="chronicDiseaseDetails" required maxLength={2000} className={fieldClass} placeholder="เช่น เบาหวาน ความดันโลหิตสูง" />
-            </label>
-          )}
-
-          <div className="mt-5 grid gap-5">
-            <label>
-              <FieldLabel required>สาเหตุที่มาพบแพทย์</FieldLabel>
-              <textarea name="chiefComplaint" required maxLength={2000} rows={3} className={textareaClass} placeholder="ผู้ป่วยมาพบแพทย์เพราะอะไร และเริ่มมีอาการเมื่อใด" />
-            </label>
-            <label>
-              <FieldLabel required>ลักษณะอาการ</FieldLabel>
-              <textarea name="symptomDescription" required maxLength={5000} rows={5} className={textareaClass} placeholder="บันทึกอาการสำคัญ ตำแหน่ง ความรุนแรง ระยะเวลา และสิ่งที่ทำให้อาการดีขึ้นหรือแย่ลง" />
-            </label>
-            <label>
-              <FieldLabel>บันทึกเพิ่มเติม</FieldLabel>
-              <textarea name="notes" maxLength={5000} rows={6} className={textareaClass} placeholder="ข้อมูลอื่นที่ควรส่งต่อให้ห้องแล็บและแพทย์ เช่น ประวัติแพ้ยา ยาที่ใช้ หรือข้อสังเกตจากการสัมภาษณ์" />
-            </label>
+          <div className="rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/60 p-4 text-sm font-medium leading-relaxed text-slate-700">
+            {selectedPatientCard ? (
+              selectedPatientCard.symptoms || "ไม่พบข้อมูลอาการของโรค กรุณาให้ห้องบัตรเลือกโรคใหม่"
+            ) : (
+              "เลือกบัตรผู้ป่วยด้านบนเพื่อดูอาการจากโรค"
+            )}
           </div>
         </section>
 
@@ -447,12 +411,12 @@ export function NurseInterviewForm({
             {saveState.status === "saving" ? (
               <>
                 <HeartPulse className="h-4 w-4 animate-pulse" />
-                กำลังบันทึก...
+                กำลังส่งต่อ...
               </>
             ) : (
               <>
                 <Save className="h-4 w-4" />
-                บันทึกและส่งต่อ
+                บันทึกสัญญาณชีพและส่งต่อ
               </>
             )}
           </button>

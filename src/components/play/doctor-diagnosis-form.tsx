@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertCircle,
-  Award,
   Check,
   CheckCircle2,
   FileText,
@@ -15,27 +14,13 @@ import {
   RotateCcw,
   Save,
   Search,
-  Sparkles,
   Stethoscope,
   UserRound,
   X,
-  XCircle,
 } from "lucide-react";
 import type { DiseaseLabResult } from "@/lib/disease-lab-results";
 import { playClick, playSuccess } from "@/lib/play/sound";
-
-export interface DiagnosisEvaluationModalData {
-  patientName: string;
-  queueNumber?: number | null;
-  isCorrect: boolean;
-  score?: number | null;
-  strengths?: string | null;
-  feedback?: string | null;
-  diseaseName: string;
-  diseaseCode?: string;
-  aiAvailable?: boolean;
-  aiModel?: string | null;
-}
+import { formatPatientCode } from "@/lib/patient-code";
 
 export interface NurseInterviewOption {
   id: string;
@@ -55,7 +40,7 @@ export interface NurseInterviewOption {
   pulseBpm: number;
   chronicDiseaseStatus: string;
   chronicDiseaseDetails: string | null;
-  chiefComplaint: string;
+  chiefComplaint: string | null;
   symptomDescription: string;
   notes: string | null;
   createdAt: string;
@@ -146,7 +131,6 @@ export function DoctorDiagnosisForm({
   const [isDiseaseDropdownOpen, setIsDiseaseDropdownOpen] = useState(false);
   const diseaseDropdownRef = useRef<HTMLDivElement>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [evaluationModal, setEvaluationModal] = useState<DiagnosisEvaluationModalData | null>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -260,22 +244,6 @@ export function DoctorDiagnosisForm({
         patientName,
       });
 
-      // Show Doctor Evaluation Result Modal
-      const evaluation = result.data?.evaluation;
-      if (evaluation) {
-        setEvaluationModal({
-          patientName,
-          queueNumber: qNum,
-          isCorrect: evaluation.isCorrect,
-          score: evaluation.score ?? null,
-          strengths: evaluation.strengths ?? null,
-          feedback: evaluation.feedback ?? null,
-          diseaseName: evaluation.diseaseName,
-          aiAvailable: evaluation.aiAvailable ?? true,
-          aiModel: evaluation.aiModel ?? null,
-        });
-      }
-
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       setSaveState({
@@ -334,7 +302,7 @@ export function DoctorDiagnosisForm({
             <div>
               <p className="font-bold">บันทึกผลการวินิจฉัยให้ {saveState.patientName} เรียบร้อยแล้ว</p>
               <p className="mt-0.5 text-sm font-medium text-emerald-700">
-                คิวที่ {saveState.queueNumber ?? saveState.recordId.slice(-8)} บันทึกเรียบร้อย ข้อมูลพร้อมส่งต่อไปยังสถานีเภสัชกร
+                รหัสผู้ป่วย {saveState.queueNumber != null ? formatPatientCode(saveState.queueNumber) : saveState.recordId.slice(-8)} บันทึกเรียบร้อย ข้อมูลพร้อมส่งต่อไปยังสถานีเภสัชกร
               </p>
             </div>
           </div>
@@ -380,7 +348,7 @@ export function DoctorDiagnosisForm({
                   </option>
                   {interviews.map((item) => (
                     <option key={item.id} value={item.id}>
-                      คิวที่ {item.queueNumber ?? "-"}: {item.patientPrefix}{item.patientFirstName} {item.patientLastName} · {item.age} ปี · {item.gender} · {item.maritalStatus}
+                      รหัสผู้ป่วย {formatPatientCode(item.queueNumber)}: {item.patientPrefix}{item.patientFirstName} {item.patientLastName} · {item.age} ปี · {item.gender} · {item.maritalStatus}
                     </option>
                   ))}
                 </select>
@@ -401,7 +369,7 @@ export function DoctorDiagnosisForm({
                 {/* Basic Demographics */}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="ข้อมูลส่วนตัวผู้ป่วย">
                   {[
-                    ["คิวตรวจ", `คิวที่ ${selectedInterview.queueNumber ?? "-"}`],
+                    ["รหัสผู้ป่วย", formatPatientCode(selectedInterview.queueNumber)],
                     [
                       "ชื่อ-นามสกุล",
                       `${selectedInterview.patientPrefix}${selectedInterview.patientFirstName} ${selectedInterview.patientLastName}`,
@@ -457,20 +425,12 @@ export function DoctorDiagnosisForm({
                   </div>
                 </div>
 
-                {/* Complaints and Symptoms from Nurse */}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
-                    <span className="block text-xs font-bold text-slate-400">อาการสำคัญที่มาโรงพยาบาล (CC)</span>
-                    <p className="mt-1 text-sm font-medium leading-relaxed text-slate-800">
-                      {selectedInterview.chiefComplaint}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
-                    <span className="block text-xs font-bold text-slate-400">ประวัติการเจ็บป่วยปัจจุบัน (PI)</span>
-                    <p className="mt-1 text-sm font-medium leading-relaxed text-slate-800">
-                      {selectedInterview.symptomDescription}
-                    </p>
-                  </div>
+                {/* Symptoms supplied by the card room */}
+                <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
+                  <span className="block text-xs font-bold text-slate-400">อาการผู้ป่วย</span>
+                  <p className="mt-1 whitespace-pre-wrap text-sm font-medium leading-relaxed text-slate-800">
+                    {selectedInterview.symptomDescription}
+                  </p>
                 </div>
 
                 {selectedInterview.notes && (
@@ -680,176 +640,6 @@ export function DoctorDiagnosisForm({
           </button>
         </div>
       </form>
-
-      {/* Doctor Evaluation Result Modal */}
-      {evaluationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border border-slate-100 flex flex-col gap-5 animate-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm ${
-                    evaluationModal.isCorrect
-                      ? "bg-emerald-100 text-emerald-600 ring-4 ring-emerald-50"
-                      : "bg-rose-100 text-rose-600 ring-4 ring-rose-50"
-                  }`}
-                >
-                  {evaluationModal.isCorrect ? (
-                    <Award className="h-6 w-6" />
-                  ) : (
-                    <XCircle className="h-6 w-6" />
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-bold text-slate-900">
-                      ผลการประเมินการวินิจฉัยโรค
-                    </h3>
-                    {evaluationModal.aiAvailable !== false ? (
-                      <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-800">
-                        {evaluationModal.aiModel ? `AI (${evaluationModal.aiModel})` : "AI Evaluation"}
-                      </span>
-                    ) : (
-                      <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
-                        AI ใช้งานไม่ได้ชั่วคราว
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    ผู้ป่วย: <span className="font-semibold text-slate-700">{evaluationModal.patientName}</span>
-                    {evaluationModal.queueNumber && ` · คิวที่ ${evaluationModal.queueNumber}`}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEvaluationModal(null)}
-                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-                title="ปิด"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Score Banner */}
-            <div
-              className={`rounded-2xl p-4 sm:p-5 border flex flex-col sm:flex-row items-center justify-between gap-4 ${
-                evaluationModal.isCorrect
-                  ? "bg-gradient-to-br from-emerald-50 to-teal-50/50 border-emerald-200 text-emerald-950"
-                  : "bg-gradient-to-br from-rose-50 to-red-50/50 border-rose-200 text-rose-950"
-              }`}
-            >
-              <div className="text-center sm:text-left space-y-1.5">
-                <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold shadow-2xs bg-white border">
-                  {evaluationModal.isCorrect ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                      <span className="text-emerald-700">วินิจฉัยโรคถูกต้อง (ตรงเฉลย)</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-4 w-4 text-rose-600" />
-                      <span className="text-rose-700">วินิจฉัยโรคไม่ตรงเฉลย</span>
-                    </>
-                  )}
-                </div>
-                <p className="text-xs text-slate-600 pt-0.5">
-                  โรคที่แพทย์เลือก: <strong className="font-semibold text-slate-900">{evaluationModal.diseaseName}</strong>
-                </p>
-              </div>
-
-              {evaluationModal.aiAvailable !== false && evaluationModal.score !== null && evaluationModal.score !== undefined ? (
-                <div className="flex flex-col items-center justify-center bg-white rounded-2xl px-6 py-3 border shadow-xs min-w-[130px]">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">คะแนนประเมิน</span>
-                  <div className="flex items-baseline gap-1">
-                    <span
-                      className={`text-3xl sm:text-4xl font-black font-mono ${
-                        evaluationModal.isCorrect ? "text-emerald-600" : "text-rose-600"
-                      }`}
-                    >
-                      {evaluationModal.score}
-                    </span>
-                    <span className="text-sm font-bold text-slate-400">/ 10</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center bg-white rounded-2xl px-5 py-3 border border-amber-200 shadow-xs min-w-[130px] text-center">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600">สถานะ AI</span>
-                  <span className="text-xs font-black text-amber-700 mt-1">ใช้งานไม่ได้ชั่วคราว</span>
-                  <span className="text-[10px] text-emerald-600 font-semibold mt-0.5">บันทึกส่งต่อแล้ว</span>
-                </div>
-              )}
-            </div>
-
-            {/* If AI is NOT available: Safety Fallback Notification */}
-            {evaluationModal.aiAvailable === false && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
-                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-                  <span>แจ้งเตือน: ระบบ AI ใช้งานไม่ได้ชั่วคราว</span>
-                </div>
-                <div className="text-xs font-medium text-amber-950 leading-relaxed pl-6 flex items-center gap-1.5 flex-wrap">
-                  <span>ผลการวินิจฉัย:</span>
-                  {evaluationModal.isCorrect ? (
-                    <span className="inline-flex items-center gap-1 font-bold text-emerald-800">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      โรคถูกต้องตามเฉลย
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 font-bold text-rose-800">
-                      <XCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
-                      โรคไม่ตรงตามเฉลย
-                    </span>
-                  )}
-                  <span>
-                    {evaluationModal.isCorrect
-                      ? "(ระบบ AI ไม่สามารถให้คะแนนความละเอียดได้ในขณะนี้ ระบบได้บันทึกการส่งงานและส่งต่อไปยังห้องจ่ายยาเรียบร้อยแล้ว)"
-                      : "(ระบบได้บันทึกการส่งงานและส่งต่อไปยังห้องจ่ายยาเรียบร้อยแล้ว)"}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* If AI IS available: Strengths / คำชมเชย */}
-            {evaluationModal.aiAvailable !== false && evaluationModal.strengths && (
-              <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 p-4 space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
-                  <Sparkles className="h-4 w-4 text-amber-600 shrink-0" />
-                  <span>จุดเด่นที่ทำได้ดี (คำชมเชย):</span>
-                </div>
-                <p className="text-xs font-medium text-amber-950 leading-relaxed pl-6">
-                  {evaluationModal.strengths}
-                </p>
-              </div>
-            )}
-
-            {/* If AI IS available: Feedback / การวิเคราะห์จาก AI */}
-            {evaluationModal.aiAvailable !== false && evaluationModal.feedback && (
-              <div className="rounded-2xl border border-sky-100 bg-sky-50/40 p-4 space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-sky-800">
-                  <Stethoscope className="h-4 w-4 text-sky-600 shrink-0" />
-                  <span>การวิเคราะห์ความละเอียดและคำแนะนำ:</span>
-                </div>
-                <p className="text-xs font-medium text-slate-700 leading-relaxed pl-6 whitespace-pre-line">
-                  {evaluationModal.feedback}
-                </p>
-              </div>
-            )}
-
-            {/* Modal Actions */}
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => setEvaluationModal(null)}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-6 py-3 text-sm font-bold text-white shadow-md shadow-sky-500/20 hover:bg-sky-700 transition-colors cursor-pointer active:scale-95"
-              >
-                <span>รับทราบ / ตรวจผู้ป่วยรายถัดไป</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
