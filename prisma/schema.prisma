@@ -1,0 +1,474 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Contact {
+  id         String        @id @default(cuid())
+  name       String
+  email      String?
+  phone      String?
+  company    String?
+  status     ContactStatus @default(LEAD)
+  source     String?
+  notes      String?       @db.Text
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  activities Activity[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  contactId   String
+  type        ActivityType
+  title       String
+  description String?      @db.Text
+  scheduledAt DateTime?
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  contact     Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([scheduledAt])
+}
+
+enum ContactStatus {
+  LEAD
+  QUALIFIED
+  CUSTOMER
+  INACTIVE
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  TASK
+  NOTE
+}
+
+enum UserRole {
+  ADMIN
+  STUDENT
+}
+
+model User {
+  id                String                 @id @default(cuid())
+  role              UserRole
+  // Admin specific fields
+  username          String?                @unique
+  password          String?
+  firstName         String?
+  lastName          String?
+  // Student specific fields
+  studentId         String?                @unique
+  // Common field for display
+  name              String
+  isActive          Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  sessions          AdminSession[]
+  nurseInterviews   NurseInterview[]
+  patientCards      PatientCard[]
+  labResults        LabResult[]
+  doctorDiagnoses   DoctorDiagnosis[]
+  pharmacyDispenses PharmacyDispense[]
+  groupMemberships  ClassroomGroupMember[]
+  createdSimulations SimulationSession[] @relation("SimulationCreatedBy")
+  simulationParticipants SimulationParticipant[]
+
+  @@index([role])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+model AdminSession {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique @db.Char(64)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model LoginThrottle {
+  keyHash         String    @id @db.Char(64)
+  failures        Int       @default(0)
+  windowStartedAt DateTime  @default(now())
+  blockedUntil    DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  @@index([blockedUntil])
+}
+
+model Disease {
+  id              String            @id @default(cuid())
+  code            String            @unique
+  name            String
+  symptoms        String            @db.Text
+  labResults      Json? // [{ name, result, referenceRange }] ผลตรวจทางห้องปฏิบัติการ
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  doctorDiagnoses DoctorDiagnosis[]
+  labPanels       LabResult[]
+
+  @@index([code])
+  @@index([name])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+model Classroom {
+  id                String                 @id @default(cuid())
+  name              String
+  code              String?
+  description       String?                @db.Text
+  isActive          Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  groups            ClassroomGroup[]
+  groupMembers      ClassroomGroupMember[]
+  nurseInterviews   NurseInterview[]
+  patientCards      PatientCard[]
+  labResults        LabResult[]
+  doctorDiagnoses   DoctorDiagnosis[]
+  pharmacyDispenses PharmacyDispense[]
+  simulations       SimulationSession[]
+
+  @@index([name])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+model ClassroomGroup {
+  id                String                 @id @default(cuid())
+  name              String
+  description       String?                @db.Text
+  classroomId       String
+  classroom         Classroom              @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  members           ClassroomGroupMember[]
+  nurseInterviews   NurseInterview[]
+  patientCards      PatientCard[]
+  labResults        LabResult[]
+  doctorDiagnoses   DoctorDiagnosis[]
+  pharmacyDispenses PharmacyDispense[]
+  simulationParticipants SimulationParticipant[]
+  queueCounters      SimulationQueueCounter[]
+  isActive          Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([classroomId])
+  @@index([name])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+model ClassroomGroupMember {
+  id          String   @id @default(cuid())
+  classroomId String
+  groupId     String
+  studentId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  classroom Classroom      @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  group     ClassroomGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student   User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, studentId])
+  @@index([classroomId])
+  @@index([groupId])
+  @@index([studentId])
+}
+
+model PatientCard {
+  id               String            @id @default(cuid())
+  clerkId          String?
+  classroomId      String?
+  groupId          String?
+  simulationId     String?
+  clerkName        String
+  classroomName    String
+  groupName        String
+  patientPrefix    String
+  patientFirstName String
+  patientLastName  String
+  age              Int
+  gender           String
+  maritalStatus    String
+  queueNumber      Int?
+  diseaseCode      String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  clerk            User?             @relation(fields: [clerkId], references: [id], onDelete: SetNull)
+  classroom        Classroom?        @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  group            ClassroomGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  simulation       SimulationSession? @relation(fields: [simulationId], references: [id], onDelete: SetNull)
+  nurseInterview   NurseInterview?
+  labResult        LabResult?
+  doctorDiagnosis  DoctorDiagnosis?
+  pharmacyDispense PharmacyDispense?
+
+  @@index([clerkId])
+  @@index([classroomId])
+  @@index([groupId])
+  @@index([simulationId])
+  @@index([simulationId, groupId])
+  @@index([diseaseCode])
+  @@index([createdAt])
+}
+
+model NurseInterview {
+  id                    String            @id @default(cuid())
+  patientCardId         String?           @unique
+  nurseId               String?
+  classroomId           String?
+  groupId               String?
+  simulationId          String?
+  queueNumber           Int?
+  nurseName             String
+  classroomName         String
+  groupName             String
+  patientPrefix         String
+  patientFirstName      String
+  patientLastName       String
+  age                   Int
+  gender                String
+  maritalStatus         String
+  weightKg              Decimal           @db.Decimal(5, 2)
+  heightCm              Decimal           @db.Decimal(5, 2)
+  systolicBp            Int
+  diastolicBp           Int
+  pulseBpm              Int
+  chronicDiseaseStatus  String
+  chronicDiseaseDetails String?           @db.Text
+  chiefComplaint        String            @db.Text
+  symptomDescription    String            @db.Text
+  notes                 String?           @db.Text
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  patientCard           PatientCard?      @relation(fields: [patientCardId], references: [id], onDelete: SetNull)
+  nurse                 User?             @relation(fields: [nurseId], references: [id], onDelete: SetNull)
+  classroom             Classroom?        @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  group                 ClassroomGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  simulation            SimulationSession? @relation(fields: [simulationId], references: [id], onDelete: SetNull)
+  labResult             LabResult?
+  doctorDiagnosis       DoctorDiagnosis?
+  pharmacyDispense      PharmacyDispense?
+
+  @@index([nurseId])
+  @@index([classroomId])
+  @@index([groupId])
+  @@index([simulationId])
+  @@index([simulationId, groupId])
+  @@index([createdAt])
+}
+
+model LabResult {
+  id               String           @id @default(cuid())
+  patientCardId    String?          @unique
+  nurseInterviewId String?          @unique
+  medTechId        String?
+  classroomId      String?
+  groupId          String?
+  simulationId     String?
+  queueNumber      Int?
+  medTechName      String
+  classroomName    String
+  groupName        String
+  patientPrefix    String
+  patientFirstName String
+  patientLastName  String
+  age              Int
+  gender           String
+  maritalStatus    String
+  panelDiseaseId   String? // ชุดตรวจที่เทคนิคการแพทย์เลือกส่งต่อ
+  panelDiseaseCode String?
+  panelDiseaseName String
+  labItems         Json // [{ name, result, referenceRange }] สำเนาผลตรวจ ณ เวลาที่ส่ง
+  isCorrect        Boolean? // ชุดตรวจตรงกับเฉลยของห้องบัตรหรือไม่ (ใช้ในหน้ามอนิเตอร์ครู)
+  notes            String?          @db.Text
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  patientCard      PatientCard?     @relation(fields: [patientCardId], references: [id], onDelete: SetNull)
+  nurseInterview   NurseInterview?  @relation(fields: [nurseInterviewId], references: [id], onDelete: SetNull)
+  medTech          User?            @relation(fields: [medTechId], references: [id], onDelete: SetNull)
+  classroom        Classroom?       @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  group            ClassroomGroup?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  simulation       SimulationSession? @relation(fields: [simulationId], references: [id], onDelete: SetNull)
+  panelDisease     Disease?         @relation(fields: [panelDiseaseId], references: [id], onDelete: SetNull)
+  doctorDiagnosis  DoctorDiagnosis?
+
+  @@index([medTechId])
+  @@index([classroomId])
+  @@index([groupId])
+  @@index([simulationId])
+  @@index([simulationId, groupId])
+  @@index([panelDiseaseId])
+  @@index([createdAt])
+}
+
+model DoctorDiagnosis {
+  id               String            @id @default(cuid())
+  patientCardId    String?           @unique
+  nurseInterviewId String?           @unique
+  labResultId      String?           @unique
+  doctorId         String?
+  classroomId      String?
+  groupId          String?
+  simulationId     String?
+  queueNumber      Int?
+  doctorName       String
+  classroomName    String
+  groupName        String
+  patientPrefix    String
+  patientFirstName String
+  patientLastName  String
+  age              Int
+  gender           String
+  maritalStatus    String
+  diseaseId        String?
+  diseaseCode      String?
+  diseaseName      String
+  doctorDiagnosis  String            @db.Text
+  treatmentPlan    String?           @db.Text
+  notes            String?           @db.Text
+  isCorrect        Boolean? // ผลตรวจโรคตรงกับเฉลยของห้องบัตรหรือไม่
+  evaluationScore  Int? // คะแนนเต็ม 10 (0 เมื่อโรคผิด, 1-10 จาก LLM เมื่อโรคถูก)
+  aiModel          String? // ชื่อโมเดล AI ที่ใช้ประเมิน (เช่น gemini-3.8-flash, claude-sonnet-5, gpt-5.6-terra)
+  aiFeedback       String?           @db.Text // บทวิเคราะห์และความเห็นจาก AI
+  aiStrengths      String?           @db.Text // คำชมเชยและจุดเด่นที่ทำได้ดี
+  aiEvaluatedAt    DateTime? // เวลาที่ประเมินโดย AI
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  patientCard      PatientCard?      @relation(fields: [patientCardId], references: [id], onDelete: SetNull)
+  nurseInterview   NurseInterview?   @relation(fields: [nurseInterviewId], references: [id], onDelete: SetNull)
+  labResult        LabResult?        @relation(fields: [labResultId], references: [id], onDelete: SetNull)
+  doctor           User?             @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  classroom        Classroom?        @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  group            ClassroomGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  simulation       SimulationSession? @relation(fields: [simulationId], references: [id], onDelete: SetNull)
+  disease          Disease?          @relation(fields: [diseaseId], references: [id], onDelete: SetNull)
+  pharmacyDispense PharmacyDispense?
+
+  @@index([doctorId])
+  @@index([classroomId])
+  @@index([groupId])
+  @@index([simulationId])
+  @@index([simulationId, groupId])
+  @@index([diseaseId])
+  @@index([createdAt])
+}
+
+model PharmacyDispense {
+  id                  String           @id @default(cuid())
+  patientCardId       String?          @unique
+  nurseInterviewId    String?          @unique
+  doctorDiagnosisId   String?          @unique
+  pharmacistId        String?
+  classroomId         String?
+  groupId             String?
+  simulationId        String?
+  queueNumber         Int?
+  pharmacistName      String
+  classroomName       String
+  groupName           String
+  patientPrefix       String
+  patientFirstName    String
+  patientLastName     String
+  age                 Int
+  gender              String
+  maritalStatus       String
+  diseaseName         String
+  doctorDiagnosisText String           @db.Text
+  medicines           Json
+  totalTablets        Int
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  patientCard         PatientCard?     @relation(fields: [patientCardId], references: [id], onDelete: SetNull)
+  nurseInterview      NurseInterview?  @relation(fields: [nurseInterviewId], references: [id], onDelete: SetNull)
+  doctorDiagnosis     DoctorDiagnosis? @relation(fields: [doctorDiagnosisId], references: [id], onDelete: SetNull)
+  pharmacist          User?            @relation(fields: [pharmacistId], references: [id], onDelete: SetNull)
+  classroom           Classroom?       @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  group               ClassroomGroup?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  simulation          SimulationSession? @relation(fields: [simulationId], references: [id], onDelete: SetNull)
+
+  @@index([pharmacistId])
+  @@index([classroomId])
+  @@index([groupId])
+  @@index([simulationId])
+  @@index([simulationId, groupId])
+  @@index([createdAt])
+}
+
+enum SimulationStatus {
+  LOBBY
+  RUNNING
+  ENDED
+}
+
+model SimulationSession {
+  id                String                  @id @default(cuid())
+  roomCode          String                  @unique @db.Char(6)
+  classroomId       String
+  createdById       String?
+  status            SimulationStatus        @default(LOBBY)
+  startedAt         DateTime?
+  endedAt           DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  classroom         Classroom               @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  createdBy         User?                   @relation("SimulationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  participants      SimulationParticipant[]
+  queueCounters     SimulationQueueCounter[]
+  patientCards      PatientCard[]
+  nurseInterviews   NurseInterview[]
+  labResults        LabResult[]
+  doctorDiagnoses   DoctorDiagnosis[]
+  pharmacyDispenses PharmacyDispense[]
+
+  @@index([classroomId, status])
+  @@index([status, createdAt])
+}
+
+model SimulationQueueCounter {
+  simulationId    String
+  groupId         String
+  lastQueueNumber Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  simulation      SimulationSession @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  group           ClassroomGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([simulationId, groupId])
+  @@index([groupId])
+}
+
+model SimulationParticipant {
+  id           String            @id @default(cuid())
+  simulationId String
+  studentId    String
+  groupId      String
+  role         String            @db.VarChar(32)
+  joinedAt     DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  simulation   SimulationSession @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  student      User              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  group        ClassroomGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([simulationId, studentId])
+  @@index([simulationId, groupId])
+  @@index([studentId])
+}

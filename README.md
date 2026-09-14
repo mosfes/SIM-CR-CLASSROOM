@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SIM CR Classroom
 
-## Getting Started
+ระบบจำลองการเรียนรู้ทางคลินิกสำหรับห้องเรียน ช่วยให้อาจารย์จัดการห้องเรียน นักเรียน เคสโรค และการจำลองสถานการณ์แบบหลายบทบาท ตั้งแต่การซักประวัติ การตรวจทางห้องปฏิบัติการ การวินิจฉัย ไปจนถึงการจ่ายยา พร้อมหน้าจอแสดงผลสำหรับโปรเจกเตอร์และการประเมินการวินิจฉัยด้วย AI (เปิดใช้เป็นตัวเลือก)
 
-First, run the development server:
+## ความสามารถหลัก
+
+- จัดการผู้ดูแล นักเรียน ห้องเรียน กลุ่มผู้เรียน และข้อมูลโรค
+- จำลองการทำงานร่วมกันของบทบาทพยาบาล เทคนิคการแพทย์ แพทย์ และเภสัชกร
+- ให้นักเรียนเข้าร่วมสถานการณ์ผ่านรหัสห้องหรือ QR Code
+- มีหน้าจอโปรเจกเตอร์สำหรับแสดงสถานะของห้องเรียนแบบเรียลไทม์
+- บันทึกข้อมูลผู้ป่วย ผลตรวจ การวินิจฉัย และการจ่ายยาในแต่ละสถานการณ์
+- ประเมินคำวินิจฉัยของนักเรียนด้วย AI ได้ โดยไม่กระทบการบันทึกข้อมูลเมื่อ AI ไม่พร้อมใช้งาน
+- มีระบบเซสชันผู้ดูแล การจำกัดการลองเข้าสู่ระบบ การตรวจสอบ CSRF และ security headers
+
+## เทคโนโลยี
+
+- Next.js 16 App Router และ React 19
+- HeroUI React v3
+- Prisma ORM 6
+- TiDB Cloud / MySQL
+- TypeScript
+
+## การเริ่มใช้งานในเครื่อง
+
+ต้องใช้ Node.js และฐานข้อมูล MySQL หรือ TiDB Cloud
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+สร้างไฟล์ `.env` ในเครื่องของคุณและกำหนดค่าการเชื่อมต่อฐานข้อมูล/บริการที่ต้องใช้ให้ตรงกับสภาพแวดล้อม จากนั้นสร้าง Prisma Client และเปิดเซิร์ฟเวอร์พัฒนา:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run db:generate
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+เปิด [http://localhost:3000](http://localhost:3000) จากนั้นเข้า `/login` สำหรับผู้ดูแล
 
-## Learn More
+ถ้าต้องการให้อุปกรณ์อื่นในเครือข่ายสแกน QR Code เพื่อเข้าร่วมจากเครื่องที่กำลังรันอยู่ ให้กำหนด `NEXT_PUBLIC_APP_URL` เป็นที่อยู่ LAN ที่เข้าถึงได้จากอุปกรณ์เหล่านั้น
 
-To learn more about Next.js, take a look at the following resources:
+## ตัวแปรสภาพแวดล้อม
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+ตัวแปรสำคัญที่ต้องกำหนดใน environment มีดังนี้:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `DATABASE_URL` — URL สำหรับเชื่อมต่อ MySQL/TiDB Cloud
+- `APP_ORIGIN` — origin สาธารณะที่ใช้ตรวจสอบคำขอแบบ state-changing ใน production
+- `NEXT_PUBLIC_APP_URL` — URL ที่จะถูกเข้ารหัสลงใน QR Code
+- `SESSION_COOKIE_SECURE` — ตั้งเป็น `true` เมื่อใช้งานผ่าน HTTPS
+- `KKU_AI_API_KEY` — คีย์สำหรับการประเมินด้วย AI (ไม่บังคับ)
 
-## Deploy on Vercel
+ห้าม commit ไฟล์ `.env` หรือ `.env.example` รวมถึงคีย์จริงลง Git เด็ดขาด ไฟล์ environment ทั้งหมดถูกเพิ่มไว้ใน `.gitignore` แล้ว ให้เก็บคีย์ไว้ใน secret manager ของระบบ deploy หรือ environment variables ของเครื่องที่รันแอปเท่านั้น
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## การจัดการฐานข้อมูล
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+คำสั่งที่ใช้บ่อย:
+
+```bash
+npm run db:generate  # สร้าง Prisma Client
+npm run db:push      # sync schema กับฐานข้อมูล
+npm run db:migrate   # สร้าง migration สำหรับ development
+npm run db:deploy    # deploy migration ที่มีอยู่
+npm run db:studio    # เปิด Prisma Studio
+```
+
+สำหรับฐานข้อมูลใหม่ ให้ใช้:
+
+```bash
+npm run db:deploy
+```
+
+หากเป็นฐานข้อมูลเดิมที่เคยสร้างด้วย `prisma db push` ให้อ่านประวัติ migration และทำ baseline ตามขั้นตอนของสภาพแวดล้อมนั้นก่อนใช้ `db:deploy` อย่าทำเครื่องหมาย migration ว่าถูก apply แล้ว หาก migration นั้นยังไม่ได้รันจริง
+
+หากยังไม่มีบัญชีผู้ดูแล ให้สร้างแบบโต้ตอบใน terminal (รหัสผ่านจะไม่ถูกแสดงบนหน้าจอ):
+
+```bash
+npm run admin:create
+```
+
+## การตรวจสอบคุณภาพ
+
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+Health endpoint อยู่ที่ `/api/health` และใช้ตรวจสอบการเชื่อมต่อฐานข้อมูลโดยไม่ต้องอ่านข้อมูลแอปพลิเคชัน
+
+## โครงสร้างสำคัญ
+
+- `src/app/admin` — หน้าจัดการสำหรับผู้ดูแล
+- `src/app/play` — หน้าจำลองสถานการณ์สำหรับนักเรียน
+- `src/app/projector` — หน้าจอแสดงผลสำหรับโปรเจกเตอร์
+- `src/app/api` — API routes
+- `src/components` — คอมโพเนนต์ส่วนติดต่อผู้ใช้
+- `src/lib` — logic ฝั่งเซิร์ฟเวอร์และส่วนที่ใช้ร่วมกัน
+- `prisma` — schema และ migration ของฐานข้อมูล
+
+เอกสาร HeroUI React v3 สำหรับ coding agents ถูกระบุไว้ใน `AGENTS.md` และเก็บไว้ใน `.heroui-docs/` ซึ่งเป็นไฟล์สำหรับใช้งานภายในและไม่ถูก commit
