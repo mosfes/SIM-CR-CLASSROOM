@@ -451,7 +451,7 @@ export function ClassroomsTableSkeleton({ rows = 5 }: { rows?: number }) {
         <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-medium uppercase tracking-wider text-slate-500">
           <tr>
             <th className="px-6 py-4 whitespace-nowrap">ชื่อห้องเรียน</th>
-            <th className="px-6 py-4 whitespace-nowrap">กลุ่มในห้องเรียน</th>
+            <th className="px-6 py-4 whitespace-nowrap">ห้องตรวจในห้องเรียน</th>
             <th className="px-6 py-4 whitespace-nowrap">สถานะ</th>
             <th className="px-6 py-4 whitespace-nowrap">วันที่สร้าง</th>
             <th className="px-6 py-4 text-right whitespace-nowrap">จัดการ</th>
@@ -667,5 +667,4 @@ export function ClassroomDetailPageSkeleton() {
     </div>
   );
 }
-
 

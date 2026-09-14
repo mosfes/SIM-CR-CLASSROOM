@@ -105,7 +105,7 @@ export function PlayLobby({
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <Users className="mb-2 h-4 w-4 text-teal-300" />
-                  <p className="text-xs font-medium text-slate-400">กลุ่ม / บทบาท</p>
+                  <p className="text-xs font-medium text-slate-400">ห้องตรวจ / บทบาท</p>
                   <p className="mt-1 text-sm font-black text-white">{participant.group.name}</p>
                   <p className="mt-0.5 text-xs font-medium text-teal-200">{role?.label ?? participant.role}</p>
                 </div>

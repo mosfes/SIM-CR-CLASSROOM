@@ -168,7 +168,7 @@ export function PatientCardForm({ clerk, classroom, group, simulationId, disease
         <div className="grid gap-3 border-b border-amber-100 bg-amber-50/70 px-5 py-4 text-sm sm:grid-cols-3 sm:px-7">
           <div><span className="block text-xs font-bold text-slate-400">เจ้าหน้าที่ห้องบัตร</span><span className="font-bold text-slate-800">{clerk.name}</span></div>
           <div><span className="block text-xs font-bold text-slate-400">ห้องเรียน</span><span className="font-bold text-slate-800">{classroom.name}</span></div>
-          <div><span className="block text-xs font-bold text-slate-400">กลุ่ม</span><span className="font-bold text-slate-800">{group.name}</span></div>
+          <div><span className="block text-xs font-bold text-slate-400">ห้องตรวจ</span><span className="font-bold text-slate-800">{group.name}</span></div>
         </div>
       </section>
 

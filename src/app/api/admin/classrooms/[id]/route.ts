@@ -105,7 +105,7 @@ export async function PUT(
       return NextResponse.json(
         {
           success: false,
-          error: `จำนวนกลุ่มต้องเป็นจำนวนเต็มระหว่าง 1 ถึง ${MAX_CLASSROOM_GROUP_COUNT} กลุ่ม`,
+          error: `จำนวนห้องตรวจต้องเป็นจำนวนเต็มระหว่าง 1 ถึง ${MAX_CLASSROOM_GROUP_COUNT} ห้องตรวจ`,
         },
         { status: 400 }
       );
@@ -158,7 +158,7 @@ export async function PUT(
         return NextResponse.json(
           {
             success: false,
-            error: `ไม่สามารถเปลี่ยนจำนวนกลุ่มขณะมีรอบจำลอง ${activeSession.roomCode} กำลังใช้งาน`,
+            error: `ไม่สามารถเปลี่ยนจำนวนห้องตรวจขณะมีรอบจำลอง ${activeSession.roomCode} กำลังใช้งาน`,
           },
           { status: 409 }
         );

@@ -95,7 +95,7 @@ export function PlayWizard() {
   const steps = [
     { id: "room" as const, number: 1, label: "ใส่เลขห้อง" },
     { id: "student" as const, number: 2, label: "เลือกชื่อ" },
-    { id: "assignment" as const, number: 3, label: "เลือกกลุ่มและบทบาท" },
+    { id: "assignment" as const, number: 3, label: "เลือกห้องตรวจและบทบาท" },
   ];
 
   function goBack() {
@@ -140,7 +140,7 @@ export function PlayWizard() {
         throw new Error("รอบจำลองนี้สิ้นสุดแล้ว กรุณารอเลขห้องใหม่จากครู");
       }
       if (foundSession.classroom.groups.length === 0) {
-        throw new Error("ห้องจำลองนี้ยังไม่มีกลุ่มให้เลือก กรุณาแจ้งครู");
+        throw new Error("ห้องจำลองนี้ยังไม่มีห้องตรวจให้เลือก กรุณาแจ้งครู");
       }
 
       playSuccess();
@@ -331,7 +331,7 @@ export function PlayWizard() {
             <div className="mb-5">
               <span className="rounded-full border border-rose-100 bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600">ขั้นตอนที่ 2 จาก 3</span>
               <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">เลือกชื่อตัวเอง</h1>
-              <p className="mt-1 text-sm text-slate-500">เลือกชื่อของตัวเองเพื่อไปเลือกกลุ่มและบทบาท</p>
+              <p className="mt-1 text-sm text-slate-500">เลือกชื่อของตัวเองเพื่อไปเลือกห้องตรวจและบทบาท</p>
             </div>
 
             <div className="relative mb-4">
@@ -394,7 +394,7 @@ export function PlayWizard() {
           <section className="animate-game-pop">
             <div className="mb-6">
               <span className="rounded-full border border-rose-100 bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600">ขั้นตอนที่ 3 จาก 3</span>
-              <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">เลือกกลุ่มและบทบาท</h1>
+              <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">เลือกห้องตรวจและบทบาท</h1>
               <p className="mt-1 text-sm text-slate-500">ครูจะเห็นชื่อของน้องทันที และจะเริ่มเกมเมื่อทุกคนพร้อม</p>
             </div>
 
@@ -402,7 +402,7 @@ export function PlayWizard() {
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-center gap-2 text-slate-900">
                   <Users className="h-5 w-5 text-emerald-500" />
-                  <h2 className="font-bold">เลือกกลุ่ม</h2>
+                  <h2 className="font-bold">เลือกห้องตรวจ</h2>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
                   {session.classroom.groups.map((group) => {

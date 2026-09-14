@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     const classroomId = request.nextUrl.searchParams.get("classroomId")?.trim();
     const groupId = request.nextUrl.searchParams.get("groupId")?.trim();
     const simulationId = request.nextUrl.searchParams.get("simulationId")?.trim();
-    if (!classroomId || !groupId || !simulationId) return jsonError("กรุณาระบุรอบจำลอง ห้องเรียน และกลุ่ม", 400);
+    if (!classroomId || !groupId || !simulationId) return jsonError("กรุณาระบุรอบจำลอง ห้องเรียน และห้องตรวจ", 400);
     const simulation = await getRunningSimulationScope({ simulationId, classroomId, groupId });
     if (!simulation) return jsonError("รอบจำลองยังไม่เริ่ม หรือข้อมูลห้องไม่ถูกต้อง", 409);
 
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as Record<string, unknown>;
     const nurseId = requiredText(body.nurseId, "ผู้บันทึก");
     const classroomId = requiredText(body.classroomId, "ห้องเรียน");
-    const groupId = requiredText(body.groupId, "กลุ่ม");
+    const groupId = requiredText(body.groupId, "ห้องตรวจ");
     const simulationId = requiredText(body.simulationId, "รอบจำลอง");
     const patientCardId = requiredText(body.patientCardId, "บัตรผู้ป่วย");
     const chronicDiseaseStatus = requiredText(body.chronicDiseaseStatus, "ข้อมูลโรคประจำตัว");
@@ -183,10 +183,10 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (!nurse || !classroom || !group || !simulation) {
-      return jsonError("ไม่พบข้อมูลผู้บันทึก ห้องเรียน หรือกลุ่ม กรุณาเลือกใหม่", 400);
+      return jsonError("ไม่พบข้อมูลผู้บันทึก ห้องเรียน หรือห้องตรวจ กรุณาเลือกใหม่", 400);
     }
     if (!patientCard) {
-      return jsonError("บัตรผู้ป่วยนี้ถูกซักประวัติแล้ว หรือไม่อยู่ในกลุ่มนี้", 409);
+      return jsonError("บัตรผู้ป่วยนี้ถูกซักประวัติแล้ว หรือไม่อยู่ในห้องตรวจนี้", 409);
     }
 
     const interview = await prisma.nurseInterview.create({

@@ -9,7 +9,7 @@ export function parseClassroomGroupCount(value: unknown): number | null {
 
 export function getSimulationGroups(count: number) {
   return Array.from({ length: count }, (_, index) => ({
-    name: `กลุ่ม ${index + 1}`,
+    name: `ห้องตรวจ ${index + 1}`,
   }));
 }
 

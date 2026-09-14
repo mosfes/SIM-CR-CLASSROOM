@@ -99,7 +99,7 @@ export function ChangeRoleModal({
             <div className="flex items-start justify-between border-b border-slate-100 pb-4">
               <div>
                 <h3 className="text-xl font-black text-slate-900">เปลี่ยนบทบาทระหว่างเกม</h3>
-                <p className="mt-1 text-xs text-slate-500">ห้องจำลอง {roomCode} · เลือกกลุ่มและสถานีใหม่ได้ทันที</p>
+                <p className="mt-1 text-xs text-slate-500">ห้องจำลอง {roomCode} · เลือกห้องตรวจและสถานีใหม่ได้ทันที</p>
               </div>
               <button type="button" onClick={closeModal} disabled={isSwitching} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 disabled:opacity-50">
                 <X className="h-4 w-4" />
@@ -140,7 +140,7 @@ export function ChangeRoleModal({
               </div>
 
               <div>
-                <p className="mb-2.5 text-xs font-bold uppercase tracking-wider text-slate-400">2. เลือกกลุ่ม</p>
+                <p className="mb-2.5 text-xs font-bold uppercase tracking-wider text-slate-400">2. เลือกห้องตรวจ</p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {groups.map((group) => {
                     const isPicked = selectedGroupId === group.id;

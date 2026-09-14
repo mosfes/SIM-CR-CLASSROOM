@@ -150,7 +150,7 @@ async function getSubmissionDetail(id: string) {
     },
     group: {
       id: card.group?.id || card.groupId || "",
-      name: card.group?.name || card.groupName || "กลุ่มไม่ระบุ",
+      name: card.group?.name || card.groupName || "ห้องตรวจไม่ระบุ",
     },
     classroom: { id: card.classroomId || "", name: card.classroomName },
     cardRoom: {
@@ -461,7 +461,7 @@ export async function GET(request: NextRequest) {
           gender: card.gender,
           maritalStatus: card.maritalStatus,
         },
-        group: { id: card.groupId || "", name: card.groupName || "กลุ่มไม่ระบุ" },
+        group: { id: card.groupId || "", name: card.groupName || "ห้องตรวจไม่ระบุ" },
         classroom: { id: card.classroomId || "", name: card.classroomName },
         cardRoom: {
           clerkName: card.clerkName,

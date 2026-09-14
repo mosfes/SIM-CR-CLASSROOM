@@ -14,7 +14,7 @@ export async function PUT(
 
     if (!groupId) {
       return NextResponse.json(
-        { success: false, error: "ไม่พบรหัสกลุ่มที่ต้องการแก้ไข" },
+        { success: false, error: "ไม่พบรหัสห้องตรวจที่ต้องการแก้ไข" },
         { status: 400 }
       );
     }
@@ -25,7 +25,7 @@ export async function PUT(
 
     if (!existingGroup || existingGroup.classroomId !== classroomId) {
       return NextResponse.json(
-        { success: false, error: "ไม่พบข้อมูลกลุ่มนี้ในห้องเรียน" },
+        { success: false, error: "ไม่พบข้อมูลห้องตรวจนี้ในห้องเรียน" },
         { status: 404 }
       );
     }
@@ -47,7 +47,7 @@ export async function PUT(
       const cleanName = name.trim();
       if (!cleanName) {
         return NextResponse.json(
-          { success: false, error: "กรุณากรอกชื่อกลุ่ม" },
+          { success: false, error: "กรุณากรอกชื่อห้องตรวจ" },
           { status: 400 }
         );
       }
@@ -60,7 +60,7 @@ export async function PUT(
         });
         if (duplicate && duplicate.id !== groupId) {
           return NextResponse.json(
-            { success: false, error: `มีกลุ่มชื่อ "${cleanName}" อยู่ในห้องเรียนนี้แล้ว` },
+            { success: false, error: `มีห้องตรวจชื่อ "${cleanName}" อยู่ในห้องเรียนนี้แล้ว` },
             { status: 409 }
           );
         }
@@ -79,13 +79,13 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      message: "แก้ไขข้อมูลกลุ่มสำเร็จ",
+      message: "แก้ไขข้อมูลห้องตรวจสำเร็จ",
       data: updatedGroup,
     });
   } catch (error) {
     console.error("Error updating group:", error);
     return NextResponse.json(
-      { success: false, error: "เกิดข้อผิดพลาดในการแก้ไขข้อมูลกลุ่ม" },
+      { success: false, error: "เกิดข้อผิดพลาดในการแก้ไขข้อมูลห้องตรวจ" },
       { status: 500 }
     );
   }
@@ -103,7 +103,7 @@ export async function DELETE(
 
     if (!groupId) {
       return NextResponse.json(
-        { success: false, error: "ไม่พบรหัสกลุ่มที่ต้องการลบ" },
+        { success: false, error: "ไม่พบรหัสห้องตรวจที่ต้องการลบ" },
         { status: 400 }
       );
     }
@@ -114,7 +114,7 @@ export async function DELETE(
 
     if (!existingGroup || existingGroup.classroomId !== classroomId) {
       return NextResponse.json(
-        { success: false, error: "ไม่พบข้อมูลกลุ่มนี้ในห้องเรียน" },
+        { success: false, error: "ไม่พบข้อมูลห้องตรวจนี้ในห้องเรียน" },
         { status: 404 }
       );
     }
@@ -125,12 +125,12 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: "ลบกลุ่มเรียบร้อยแล้ว",
+      message: "ลบห้องตรวจเรียบร้อยแล้ว",
     });
   } catch (error) {
     console.error("Error deleting group:", error);
     return NextResponse.json(
-      { success: false, error: "เกิดข้อผิดพลาดในการลบกลุ่ม" },
+      { success: false, error: "เกิดข้อผิดพลาดในการลบห้องตรวจ" },
       { status: 500 }
     );
   }

@@ -159,7 +159,7 @@ export function ClassroomsContent({
 
     const groupCount = parseClassroomGroupCount(Number(newRoomGroupCount));
     if (groupCount === null) {
-      setAddRoomError(`จำนวนกลุ่มต้องเป็นจำนวนเต็มระหว่าง 1 ถึง ${MAX_CLASSROOM_GROUP_COUNT} กลุ่ม`);
+      setAddRoomError(`จำนวนห้องตรวจต้องเป็นจำนวนเต็มระหว่าง 1 ถึง ${MAX_CLASSROOM_GROUP_COUNT} ห้องตรวจ`);
       return;
     }
 
@@ -223,7 +223,7 @@ export function ClassroomsContent({
 
     const groupCount = parseClassroomGroupCount(Number(editRoomGroupCount));
     if (groupCount === null) {
-      setEditRoomError(`จำนวนกลุ่มต้องเป็นจำนวนเต็มระหว่าง 1 ถึง ${MAX_CLASSROOM_GROUP_COUNT} กลุ่ม`);
+      setEditRoomError(`จำนวนห้องตรวจต้องเป็นจำนวนเต็มระหว่าง 1 ถึง ${MAX_CLASSROOM_GROUP_COUNT} ห้องตรวจ`);
       return;
     }
 
@@ -329,7 +329,7 @@ export function ClassroomsContent({
             จัดการห้องเรียน
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            สร้าง แก้ไข และเปิดใช้งานห้องเรียนสำหรับรอบจำลอง พร้อมกำหนดจำนวนกลุ่ม
+            สร้าง แก้ไข และเปิดใช้งานห้องเรียนสำหรับรอบจำลอง พร้อมกำหนดจำนวนห้องตรวจ
           </p>
         </div>
 
@@ -551,7 +551,7 @@ export function ClassroomsContent({
                           <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-red-50 text-[10px] font-black text-red-600">
                             {room.groupCount}
                           </span>
-                          <span>กลุ่มสำหรับรอบจำลอง</span>
+                          <span>ห้องตรวจสำหรับรอบจำลอง</span>
                         </div>
 
                       </div>
@@ -646,7 +646,7 @@ export function ClassroomsContent({
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-slate-900">สร้างห้องเรียนใหม่</h3>
-                  <p className="text-xs text-slate-500">กำหนดชื่อ รายละเอียด และจำนวนกลุ่ม</p>
+                  <p className="text-xs text-slate-500">กำหนดชื่อ รายละเอียด และจำนวนห้องตรวจ</p>
                 </div>
               </div>
               <button
@@ -682,7 +682,7 @@ export function ClassroomsContent({
 
               <div>
                 <label htmlFor="new-room-group-count" className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  จำนวนกลุ่ม <span className="text-red-500">*</span>
+                  จำนวนห้องตรวจ <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="new-room-group-count"
@@ -697,7 +697,7 @@ export function ClassroomsContent({
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-xs text-slate-900 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-red-500/10"
                 />
                 <p className="mt-1.5 text-[11px] text-slate-400">
-                  ระบบจะสร้างกลุ่ม 1 ถึงกลุ่ม {newRoomGroupCount || "N"} ให้อัตโนมัติ (สูงสุด {MAX_CLASSROOM_GROUP_COUNT} กลุ่ม)
+                  ระบบจะสร้างห้องตรวจ 1 ถึงห้องตรวจ {newRoomGroupCount || "N"} ให้อัตโนมัติ (สูงสุด {MAX_CLASSROOM_GROUP_COUNT} ห้องตรวจ)
                 </p>
               </div>
 
@@ -747,7 +747,7 @@ export function ClassroomsContent({
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-slate-900">แก้ไขข้อมูลห้องเรียน</h3>
-                  <p className="text-xs text-slate-500">ปรับปรุงชื่อ รายละเอียด และจำนวนกลุ่ม</p>
+                  <p className="text-xs text-slate-500">ปรับปรุงชื่อ รายละเอียด และจำนวนห้องตรวจ</p>
                 </div>
               </div>
               <button
@@ -782,7 +782,7 @@ export function ClassroomsContent({
 
               <div>
                 <label htmlFor="edit-room-group-count" className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  จำนวนกลุ่ม <span className="text-red-500">*</span>
+                  จำนวนห้องตรวจ <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="edit-room-group-count"
@@ -797,7 +797,7 @@ export function ClassroomsContent({
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-xs text-slate-900 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-red-500/10"
                 />
                 <p className="mt-1.5 text-[11px] text-slate-400">
-                  หากลดจำนวน กลุ่มส่วนเกินจะถูกปิดใช้งาน และสามารถเปิดกลับได้ภายหลัง
+                  หากลดจำนวน ห้องตรวจส่วนเกินจะถูกปิดใช้งาน และสามารถเปิดกลับได้ภายหลัง
                 </p>
               </div>
 

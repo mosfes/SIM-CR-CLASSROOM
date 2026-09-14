@@ -35,7 +35,7 @@ export async function POST(
 
     if (!name || !name.trim()) {
       return NextResponse.json(
-        { success: false, error: "กรุณากรอกชื่อกลุ่ม" },
+        { success: false, error: "กรุณากรอกชื่อห้องตรวจ" },
         { status: 400 }
       );
     }
@@ -53,7 +53,7 @@ export async function POST(
 
     if (existingGroup) {
       return NextResponse.json(
-        { success: false, error: `มีกลุ่มชื่อ "${cleanName}" อยู่ในห้องเรียนนี้แล้ว` },
+        { success: false, error: `มีห้องตรวจชื่อ "${cleanName}" อยู่ในห้องเรียนนี้แล้ว` },
         { status: 409 }
       );
     }
@@ -70,7 +70,7 @@ export async function POST(
     return NextResponse.json(
       {
         success: true,
-        message: "เพิ่มกลุ่มในห้องเรียนสำเร็จ",
+        message: "เพิ่มห้องตรวจในห้องเรียนสำเร็จ",
         data: group,
       },
       { status: 201 }
@@ -78,7 +78,7 @@ export async function POST(
   } catch (error) {
     console.error("Error creating group:", error);
     return NextResponse.json(
-      { success: false, error: "เกิดข้อผิดพลาดในการสร้างกลุ่ม" },
+      { success: false, error: "เกิดข้อผิดพลาดในการสร้างห้องตรวจ" },
       { status: 500 }
     );
   }

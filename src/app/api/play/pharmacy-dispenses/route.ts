@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as Record<string, unknown>;
     const pharmacistId = requiredText(body.pharmacistId, "ผู้บันทึก");
     const classroomId = requiredText(body.classroomId, "ห้องเรียน");
-    const groupId = requiredText(body.groupId, "กลุ่ม");
+    const groupId = requiredText(body.groupId, "ห้องตรวจ");
     const simulationId = requiredText(body.simulationId, "รอบจำลอง");
     const doctorDiagnosisId = requiredText(body.doctorDiagnosisId, "ผู้ป่วย");
 
@@ -138,10 +138,10 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (!pharmacist || !classroom || !group || !simulation) {
-      return jsonError("ไม่พบข้อมูลเภสัชกร ห้องเรียน หรือกลุ่ม กรุณาเลือกใหม่", 400);
+      return jsonError("ไม่พบข้อมูลเภสัชกร ห้องเรียน หรือห้องตรวจ กรุณาเลือกใหม่", 400);
     }
     if (!doctorDiagnosis) {
-      return jsonError("ผู้ป่วยรายนี้ได้รับการจ่ายยาแล้ว หรือไม่อยู่ในกลุ่มนี้", 409);
+      return jsonError("ผู้ป่วยรายนี้ได้รับการจ่ายยาแล้ว หรือไม่อยู่ในห้องตรวจนี้", 409);
     }
 
     const dispenseRecord = await prisma.pharmacyDispense.create({

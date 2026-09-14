@@ -3,7 +3,7 @@ import { PlayWizard } from "@/components/play/play-wizard";
 
 export const metadata: Metadata = {
   title: "เริ่มเล่น — SIM CR Classroom",
-  description: "ใส่เลขห้องจำลอง เลือกตัวตน กลุ่ม และบทบาทเพื่อเข้าร่วมการฝึกปฏิบัติ",
+  description: "ใส่เลขห้องจำลอง เลือกตัวตน ห้องตรวจ และบทบาทเพื่อเข้าร่วมการฝึกปฏิบัติ",
 };
 
 export default function PlayPage() {

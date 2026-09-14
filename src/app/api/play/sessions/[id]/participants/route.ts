@@ -92,7 +92,7 @@ export async function POST(
     const session = await validateChoice({ simulationId: id, ...input });
 
     if (!session) {
-      return jsonError("ไม่พบข้อมูลนักเรียน กลุ่ม หรือห้องจำลองที่เลือก", 400);
+      return jsonError("ไม่พบข้อมูลนักเรียน ห้องตรวจ หรือห้องจำลองที่เลือก", 400);
     }
     if (session.status !== "LOBBY") {
       return jsonError(
@@ -138,7 +138,7 @@ export async function POST(
       return jsonError("รองรับเฉพาะข้อมูล JSON", 415);
     }
     if (error instanceof Error && error.message === "INVALID_INPUT") {
-      return jsonError("กรุณาเลือกชื่อ กลุ่ม และบทบาทให้ครบ", 400);
+      return jsonError("กรุณาเลือกชื่อ ห้องตรวจ และบทบาทให้ครบ", 400);
     }
     console.error("Error joining simulation session:", error);
     return jsonError("ไม่สามารถเข้าร่วมห้องจำลองได้", 500);
@@ -157,7 +157,7 @@ export async function PATCH(
     const session = await validateChoice({ simulationId: id, ...input });
 
     if (!session) {
-      return jsonError("ไม่พบข้อมูลนักเรียน กลุ่ม หรือห้องจำลองที่เลือก", 400);
+      return jsonError("ไม่พบข้อมูลนักเรียน ห้องตรวจ หรือห้องจำลองที่เลือก", 400);
     }
     if (session.status !== "RUNNING") {
       return jsonError("สามารถสลับบทบาทได้เฉพาะระหว่างที่เกมกำลังดำเนินอยู่", 409);
@@ -195,7 +195,7 @@ export async function PATCH(
       return jsonError("รองรับเฉพาะข้อมูล JSON", 415);
     }
     if (error instanceof Error && error.message === "INVALID_INPUT") {
-      return jsonError("กรุณาเลือกนักเรียน กลุ่ม และบทบาทให้ครบ", 400);
+      return jsonError("กรุณาเลือกนักเรียน ห้องตรวจ และบทบาทให้ครบ", 400);
     }
     console.error("Error switching simulation participant role:", error);
     return jsonError("ไม่สามารถเปลี่ยนบทบาทได้", 500);

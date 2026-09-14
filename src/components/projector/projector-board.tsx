@@ -399,7 +399,7 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
                           >
                             <RoleAvatar role={role} size="sm" />
                             <span className="text-sm font-bold">{participant.student.name}</span>
-                            <span className={`text-xs font-semibold ${themeStyles.subtle}`}>{group?.name ?? "กลุ่มไม่ระบุ"}</span>
+                            <span className={`text-xs font-semibold ${themeStyles.subtle}`}>{group?.name ?? "ห้องตรวจไม่ระบุ"}</span>
                             {isNewest && <span className="rounded-full bg-emerald-400 px-2 py-0.5 text-[10px] font-black text-emerald-950">ใหม่</span>}
                           </div>
                         );
@@ -412,7 +412,7 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
                       className={`mt-5 inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition ${themeStyles.control}`}
                     >
                       {showGroups ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      {showGroups ? "ซ่อนรายชื่อแยกตามกลุ่ม" : "ดูรายชื่อแยกตามกลุ่ม"}
+                      {showGroups ? "ซ่อนรายชื่อแยกตามห้องตรวจ" : "ดูรายชื่อแยกตามห้องตรวจ"}
                     </button>
                     {showGroups && (
                       <div className="mt-4 grid max-h-[50vh] gap-5 overflow-y-auto pr-1 sm:grid-cols-2">
@@ -425,7 +425,7 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
                                 <span className={`shrink-0 rounded-lg px-2.5 py-1 text-sm font-black ${accent.badge}`}>{group.participants.length} คน</span>
                               </div>
                               {group.participants.length === 0 ? (
-                                <p className={`text-sm ${themeStyles.faint}`}>ยังไม่มีคนประจำกลุ่ม</p>
+                                <p className={`text-sm ${themeStyles.faint}`}>ยังไม่มีคนประจำห้องตรวจ</p>
                               ) : (
                                 <div className="flex flex-col gap-3">
                                   {group.participants.map((participant) => {
@@ -454,8 +454,8 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
           </section>
         ) : (
           <section className="flex-1 py-7">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">{isEnded ? "สรุปรอบจำลอง" : "การทำงานของแต่ละกลุ่ม"}</h2><p className={`mt-1 text-sm ${themeStyles.subtle}`}>{isEnded ? "รอบฝึกสิ้นสุดแล้ว" : "อัปเดตสดจากสถานีของนักเรียน"}</p></div><div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black ${isEnded ? "bg-slate-700 text-slate-200" : "bg-emerald-400 text-emerald-950"}`}>{isEnded ? <CheckCircle2 className="h-4 w-4" /> : <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-950" />}{isEnded ? "สิ้นสุดเกม" : "เกมกำลังดำเนินอยู่"}</div></div>
-            <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">{snapshot.groups.map((group) => <article key={group.id} className={`rounded-3xl border p-5 backdrop-blur-sm ${themeStyles.panel}`}><div className="flex items-start justify-between gap-3"><div><h3 className="text-xl font-black">{group.name}</h3><p className={`mt-1 text-sm ${themeStyles.secondary}`}>{group.participants.length} คนประจำกลุ่ม</p></div><span className="rounded-xl bg-emerald-400 px-3 py-2 text-sm font-black text-emerald-950">{group.work.pharmacyDispenses} เคสเสร็จ</span></div><div className="mt-5 grid grid-cols-5 gap-2">{FLOW.map(({ label, Icon, key, tone }) => <div key={key} className={`rounded-2xl px-2 py-3 text-center ${themeStyles.stat}`}><Icon className={`mx-auto h-4 w-4 ${tone}`} /><p className="mt-1 text-xl font-black">{group.work[key]}</p><p className={`mt-0.5 text-[10px] font-bold ${themeStyles.secondary}`}>{label}</p></div>)}</div><div className={`mt-4 flex flex-wrap gap-2 border-t pt-4 ${themeStyles.separator}`}>{group.participants.length === 0 ? <p className={`text-xs ${themeStyles.faint}`}>ยังไม่มีคนประจำกลุ่ม</p> : group.participants.map((participant) => { const role = getPlayRole(participant.role); return <span key={participant.id} className={`inline-flex items-center gap-1.5 rounded-lg py-1.5 pl-1.5 pr-2.5 text-xs font-semibold ${themeStyles.tag}`}><RoleAvatar role={role} size="sm" />{role?.label ?? participant.role}<span className={`max-w-32 truncate ${themeStyles.tagName}`}>{participant.student.name}</span></span>; })}</div></article>)}</div>
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">{isEnded ? "สรุปรอบจำลอง" : "การทำงานของแต่ละห้องตรวจ"}</h2><p className={`mt-1 text-sm ${themeStyles.subtle}`}>{isEnded ? "รอบฝึกสิ้นสุดแล้ว" : "อัปเดตสดจากสถานีของนักเรียน"}</p></div><div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black ${isEnded ? "bg-slate-700 text-slate-200" : "bg-emerald-400 text-emerald-950"}`}>{isEnded ? <CheckCircle2 className="h-4 w-4" /> : <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-950" />}{isEnded ? "สิ้นสุดเกม" : "เกมกำลังดำเนินอยู่"}</div></div>
+            <div className="grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">{snapshot.groups.map((group) => <article key={group.id} className={`rounded-3xl border p-5 backdrop-blur-sm ${themeStyles.panel}`}><div className="flex items-start justify-between gap-3"><div><h3 className="text-xl font-black">{group.name}</h3><p className={`mt-1 text-sm ${themeStyles.secondary}`}>{group.participants.length} คนประจำห้องตรวจ</p></div><span className="rounded-xl bg-emerald-400 px-3 py-2 text-sm font-black text-emerald-950">{group.work.pharmacyDispenses} เคสเสร็จ</span></div><div className="mt-5 grid grid-cols-5 gap-2">{FLOW.map(({ label, Icon, key, tone }) => <div key={key} className={`rounded-2xl px-2 py-3 text-center ${themeStyles.stat}`}><Icon className={`mx-auto h-4 w-4 ${tone}`} /><p className="mt-1 text-xl font-black">{group.work[key]}</p><p className={`mt-0.5 text-[10px] font-bold ${themeStyles.secondary}`}>{label}</p></div>)}</div><div className={`mt-4 flex flex-wrap gap-2 border-t pt-4 ${themeStyles.separator}`}>{group.participants.length === 0 ? <p className={`text-xs ${themeStyles.faint}`}>ยังไม่มีคนประจำห้องตรวจ</p> : group.participants.map((participant) => { const role = getPlayRole(participant.role); return <span key={participant.id} className={`inline-flex items-center gap-1.5 rounded-lg py-1.5 pl-1.5 pr-2.5 text-xs font-semibold ${themeStyles.tag}`}><RoleAvatar role={role} size="sm" />{role?.label ?? participant.role}<span className={`max-w-32 truncate ${themeStyles.tagName}`}>{participant.student.name}</span></span>; })}</div></article>)}</div>
           </section>
         )}
       </div>

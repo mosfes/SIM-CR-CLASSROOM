@@ -14,7 +14,7 @@ export async function PUT(
 
     if (!classroomId || !groupId) {
       return NextResponse.json(
-        { success: false, error: "ไม่พบรหัสห้องเรียนหรือรหัสกลุ่ม" },
+        { success: false, error: "ไม่พบรหัสห้องเรียนหรือรหัสห้องตรวจ" },
         { status: 400 }
       );
     }
@@ -25,7 +25,7 @@ export async function PUT(
 
     if (!group) {
       return NextResponse.json(
-        { success: false, error: "ไม่พบกลุ่มนี้ในห้องเรียน" },
+        { success: false, error: "ไม่พบห้องตรวจนี้ในห้องเรียน" },
         { status: 404 }
       );
     }
@@ -94,13 +94,13 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      message: "อัปเดตรายชื่อสมาชิกกลุ่มสำเร็จ",
+      message: "อัปเดตรายชื่อสมาชิกห้องตรวจสำเร็จ",
       data: updatedMembers,
     });
   } catch (error) {
     console.error("Error updating group members:", error);
     return NextResponse.json(
-      { success: false, error: "เกิดข้อผิดพลาดในการอัปเดตสมาชิกกลุ่ม" },
+      { success: false, error: "เกิดข้อผิดพลาดในการอัปเดตสมาชิกห้องตรวจ" },
       { status: 500 }
     );
   }

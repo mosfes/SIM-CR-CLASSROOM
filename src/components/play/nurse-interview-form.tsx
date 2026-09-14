@@ -226,7 +226,7 @@ export function NurseInterviewForm({
             <span className="font-bold text-slate-800">{classroom.name}</span>
           </div>
           <div>
-            <span className="block text-xs font-bold text-slate-400">กลุ่ม</span>
+            <span className="block text-xs font-bold text-slate-400">ห้องตรวจ</span>
             <span className="font-bold text-slate-800">{group.name}</span>
           </div>
         </div>

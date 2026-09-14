@@ -128,7 +128,7 @@ export default async function PlayRoleDashboard({
             <School className="h-4 w-4 text-amber-500" /> ห้องเรียน: {classroom.name}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm">
-            <Users className="h-4 w-4 text-emerald-500" /> กลุ่ม: {group.name}
+            <Users className="h-4 w-4 text-emerald-500" /> ห้องตรวจ: {group.name}
           </span>
           <ChangeRoleModal
             currentRoleId={role.id}

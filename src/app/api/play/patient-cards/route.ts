@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
     const classroomId = request.nextUrl.searchParams.get("classroomId")?.trim();
     const groupId = request.nextUrl.searchParams.get("groupId")?.trim();
     const simulationId = request.nextUrl.searchParams.get("simulationId")?.trim();
-    if (!classroomId || !groupId || !simulationId) return jsonError("กรุณาระบุรอบจำลอง ห้องเรียน และกลุ่ม", 400);
+    if (!classroomId || !groupId || !simulationId) return jsonError("กรุณาระบุรอบจำลอง ห้องเรียน และห้องตรวจ", 400);
 
     const simulation = await getRunningSimulationScope({ simulationId, classroomId, groupId });
     if (!simulation) return jsonError("รอบจำลองยังไม่เริ่ม หรือข้อมูลห้องไม่ถูกต้อง", 409);
@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as Record<string, unknown>;
     const clerkId = requiredText(body.clerkId, "ผู้บันทึก");
     const classroomId = requiredText(body.classroomId, "ห้องเรียน");
-    const groupId = requiredText(body.groupId, "กลุ่ม");
+    const groupId = requiredText(body.groupId, "ห้องตรวจ");
     const simulationId = requiredText(body.simulationId, "รอบจำลอง");
     const patientPrefix = requiredText(body.patientPrefix, "คำนำหน้าชื่อ");
     const patientFirstName = requiredText(body.patientFirstName, "ชื่อ");
@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (!clerk || !classroom || !group || !simulation) {
-      return jsonError("ไม่พบข้อมูลผู้บันทึก ห้องเรียน หรือกลุ่ม กรุณาเลือกใหม่", 400);
+      return jsonError("ไม่พบข้อมูลผู้บันทึก ห้องเรียน หรือห้องตรวจ กรุณาเลือกใหม่", 400);
     }
 
     const card = await createPatientCardWithReservedQueue({

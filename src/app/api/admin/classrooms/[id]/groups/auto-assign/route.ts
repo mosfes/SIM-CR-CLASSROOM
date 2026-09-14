@@ -45,7 +45,7 @@ export async function POST(
 
     if (!Array.isArray(assignments) || assignments.length === 0) {
       return NextResponse.json(
-        { success: false, error: "กรุณาระบุข้อมูลการจัดกลุ่มที่ถูกต้อง" },
+        { success: false, error: "กรุณาระบุข้อมูลการจัดห้องตรวจที่ถูกต้อง" },
         { status: 400 }
       );
     }
@@ -57,7 +57,7 @@ export async function POST(
 
       for (let i = 0; i < assignments.length; i++) {
         const item = assignments[i];
-        const groupName = item.name.trim() || `กลุ่ม ${i + 1}`;
+      const groupName = item.name.trim() || `ห้องตรวจ ${i + 1}`;
 
         if (i < existingGroups.length) {
           // Reuse and update existing group
@@ -164,13 +164,13 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: `สุ่มจัดกลุ่มสำเร็จ (${result.length} กลุ่ม)`,
+      message: `สุ่มจัดห้องตรวจสำเร็จ (${result.length} ห้องตรวจ)`,
       data: updatedClassroom,
     });
   } catch (error) {
     console.error("Error auto-assigning groups:", error);
     return NextResponse.json(
-      { success: false, error: "เกิดข้อผิดพลาดในการสุ่มจัดกลุ่ม" },
+      { success: false, error: "เกิดข้อผิดพลาดในการสุ่มจัดห้องตรวจ" },
       { status: 500 }
     );
   }

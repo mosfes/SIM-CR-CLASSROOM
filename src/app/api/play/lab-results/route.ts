@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     const classroomId = request.nextUrl.searchParams.get("classroomId")?.trim();
     const groupId = request.nextUrl.searchParams.get("groupId")?.trim();
     const simulationId = request.nextUrl.searchParams.get("simulationId")?.trim();
-    if (!classroomId || !groupId || !simulationId) return jsonError("กรุณาระบุรอบจำลอง ห้องเรียน และกลุ่ม", 400);
+    if (!classroomId || !groupId || !simulationId) return jsonError("กรุณาระบุรอบจำลอง ห้องเรียน และห้องตรวจ", 400);
     const simulation = await getRunningSimulationScope({ simulationId, classroomId, groupId });
     if (!simulation) return jsonError("รอบจำลองยังไม่เริ่ม หรือข้อมูลห้องไม่ถูกต้อง", 409);
 
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as Record<string, unknown>;
     const medTechId = requiredText(body.medTechId, "ผู้บันทึก");
     const classroomId = requiredText(body.classroomId, "ห้องเรียน");
-    const groupId = requiredText(body.groupId, "กลุ่ม");
+    const groupId = requiredText(body.groupId, "ห้องตรวจ");
     const simulationId = requiredText(body.simulationId, "รอบจำลอง");
     const nurseInterviewId = requiredText(body.nurseInterviewId, "ผู้ป่วย");
     const panelDiseaseId = requiredText(body.panelDiseaseId, "ชุดผลตรวจ");
@@ -146,10 +146,10 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (!medTech || !classroom || !group || !simulation) {
-      return jsonError("ไม่พบข้อมูลผู้บันทึก ห้องเรียน หรือกลุ่ม กรุณาเลือกใหม่", 400);
+      return jsonError("ไม่พบข้อมูลผู้บันทึก ห้องเรียน หรือห้องตรวจ กรุณาเลือกใหม่", 400);
     }
     if (!nurseInterview) {
-      return jsonError("ผู้ป่วยรายนี้ถูกส่งผลแล็บแล้ว หรือไม่อยู่ในกลุ่มนี้", 409);
+      return jsonError("ผู้ป่วยรายนี้ถูกส่งผลแล็บแล้ว หรือไม่อยู่ในห้องตรวจนี้", 409);
     }
     if (!panelDisease) {
       return jsonError("ไม่พบชุดผลตรวจที่เลือก หรือชุดนี้ไม่ได้เปิดใช้งาน", 400);

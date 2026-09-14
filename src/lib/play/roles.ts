@@ -19,7 +19,7 @@ export const PLAY_ROLES: PlayRole[] = [
     id: "card-room",
     label: "ห้องบัตร",
     shortLabel: "บัตร",
-    description: "ออกบัตรคิว บันทึกข้อมูลผู้ป่วย แล้วส่งต่อไปยังกลุ่ม",
+    description: "ออกบัตรคิว บันทึกข้อมูลผู้ป่วย แล้วส่งต่อไปยังห้องตรวจ",
     icon: IdCard,
     needsGroup: true,
     gradient: "from-amber-400 to-orange-500",
