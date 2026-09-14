@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorizeAdminRequest } from "@/lib/server/admin-api";
+import {
+  DEFAULT_SIMULATION_GROUP_COUNT,
+  getSimulationGroups,
+  MAX_CLASSROOM_GROUP_COUNT,
+  parseClassroomGroupCount,
+} from "@/lib/simulation-groups";
+
+function parseGroupCount(value: unknown): number | null {
+  if (value === undefined) return DEFAULT_SIMULATION_GROUP_COUNT;
+  return parseClassroomGroupCount(value);
+}
 
 export async function GET(request: NextRequest) {
   const authorization = await authorizeAdminRequest(request);
@@ -46,6 +57,10 @@ export async function GET(request: NextRequest) {
           name: true,
           description: true,
           isActive: true,
+          groups: {
+            where: { isActive: true },
+            select: { id: true },
+          },
           createdAt: true,
           updatedAt: true,
         },
@@ -72,7 +87,10 @@ export async function GET(request: NextRequest) {
         active: activeCount,
         inactive: inactiveCount,
       },
-      data: classrooms,
+      data: classrooms.map(({ groups, ...classroom }) => ({
+        ...classroom,
+        groupCount: groups.length,
+      })),
     }, {
       headers: {
         "Cache-Control": "no-store, max-age=0",
@@ -93,7 +111,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, description, isActive = true } = body;
+    const { name, description, isActive = true, groupCount: rawGroupCount } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -104,6 +122,17 @@ export async function POST(request: NextRequest) {
 
     const cleanName = name.trim();
     const cleanDescription = description && typeof description === "string" ? description.trim() : null;
+    const groupCount = parseGroupCount(rawGroupCount);
+
+    if (groupCount === null) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `จำนวนกลุ่มต้องเป็นจำนวนเต็มระหว่าง 1 ถึง ${MAX_CLASSROOM_GROUP_COUNT} กลุ่ม`,
+        },
+        { status: 400 }
+      );
+    }
 
     // Check duplicate classroom name
     const existing = await prisma.classroom.findFirst({
@@ -122,22 +151,33 @@ export async function POST(request: NextRequest) {
         name: cleanName,
         description: cleanDescription,
         isActive: typeof isActive === "boolean" ? isActive : true,
+        groups: {
+          create: getSimulationGroups(groupCount),
+        },
       },
       select: {
         id: true,
         name: true,
         description: true,
         isActive: true,
+        groups: {
+          where: { isActive: true },
+          select: { id: true },
+        },
         createdAt: true,
         updatedAt: true,
       },
     });
 
+    const { groups, ...classroomData } = classroom;
     return NextResponse.json(
       {
         success: true,
         message: "สร้างห้องเรียนสำเร็จ",
-        data: classroom,
+        data: {
+          ...classroomData,
+          groupCount: groups.length,
+        },
       },
       { status: 201 }
     );

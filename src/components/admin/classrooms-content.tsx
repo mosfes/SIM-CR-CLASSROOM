@@ -19,12 +19,18 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClassroomsGridSkeleton } from "@/components/admin/skeleton-loaders";
+import {
+  DEFAULT_SIMULATION_GROUP_COUNT,
+  MAX_CLASSROOM_GROUP_COUNT,
+  parseClassroomGroupCount,
+} from "@/lib/simulation-groups";
 
 interface Classroom {
   id: string;
   name: string;
   description: string | null;
   isActive: boolean;
+  groupCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +52,7 @@ export function ClassroomsContent({
   const [showAddModal, setShowAddModal] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomDescription, setNewRoomDescription] = useState("");
+  const [newRoomGroupCount, setNewRoomGroupCount] = useState(String(DEFAULT_SIMULATION_GROUP_COUNT));
   const [addingRoom, setAddingRoom] = useState(false);
   const [addRoomError, setAddRoomError] = useState<string | null>(null);
 
@@ -53,6 +60,7 @@ export function ClassroomsContent({
   const [roomToEdit, setRoomToEdit] = useState<Classroom | null>(null);
   const [editRoomName, setEditRoomName] = useState("");
   const [editRoomDescription, setEditRoomDescription] = useState("");
+  const [editRoomGroupCount, setEditRoomGroupCount] = useState("");
   const [editRoomIsActive, setEditRoomIsActive] = useState(true);
   const [savingEditRoom, setSavingEditRoom] = useState(false);
   const [editRoomError, setEditRoomError] = useState<string | null>(null);
@@ -129,6 +137,7 @@ export function ClassroomsContent({
   const openAddModal = () => {
     setNewRoomName("");
     setNewRoomDescription("");
+    setNewRoomGroupCount(String(DEFAULT_SIMULATION_GROUP_COUNT));
     setAddRoomError(null);
     setShowAddModal(true);
   };
@@ -137,6 +146,7 @@ export function ClassroomsContent({
     setShowAddModal(false);
     setNewRoomName("");
     setNewRoomDescription("");
+    setNewRoomGroupCount(String(DEFAULT_SIMULATION_GROUP_COUNT));
     setAddRoomError(null);
   };
 
@@ -144,6 +154,12 @@ export function ClassroomsContent({
     e.preventDefault();
     if (!newRoomName.trim()) {
       setAddRoomError("กรุณาระบุชื่อห้องเรียน");
+      return;
+    }
+
+    const groupCount = parseClassroomGroupCount(Number(newRoomGroupCount));
+    if (groupCount === null) {
+      setAddRoomError(`จำนวนกลุ่มต้องเป็นจำนวนเต็มระหว่าง 1 ถึง ${MAX_CLASSROOM_GROUP_COUNT} กลุ่ม`);
       return;
     }
 
@@ -157,6 +173,7 @@ export function ClassroomsContent({
         body: JSON.stringify({
           name: newRoomName.trim(),
           description: newRoomDescription.trim() || undefined,
+          groupCount,
           isActive: true,
         }),
       });
@@ -185,6 +202,7 @@ export function ClassroomsContent({
     setRoomToEdit(room);
     setEditRoomName(room.name);
     setEditRoomDescription(room.description || "");
+    setEditRoomGroupCount(String(room.groupCount));
     setEditRoomIsActive(room.isActive !== false);
     setEditRoomError(null);
   };
@@ -203,6 +221,12 @@ export function ClassroomsContent({
       return;
     }
 
+    const groupCount = parseClassroomGroupCount(Number(editRoomGroupCount));
+    if (groupCount === null) {
+      setEditRoomError(`จำนวนกลุ่มต้องเป็นจำนวนเต็มระหว่าง 1 ถึง ${MAX_CLASSROOM_GROUP_COUNT} กลุ่ม`);
+      return;
+    }
+
     try {
       setSavingEditRoom(true);
       setEditRoomError(null);
@@ -213,6 +237,7 @@ export function ClassroomsContent({
         body: JSON.stringify({
           name: editRoomName.trim(),
           description: editRoomDescription.trim() || null,
+          groupCount,
           isActive: editRoomIsActive,
         }),
       });
@@ -304,7 +329,7 @@ export function ClassroomsContent({
             จัดการห้องเรียน
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            สร้าง แก้ไข และเปิดใช้งานห้องเรียนสำหรับรอบจำลอง
+            สร้าง แก้ไข และเปิดใช้งานห้องเรียนสำหรับรอบจำลอง พร้อมกำหนดจำนวนกลุ่ม
           </p>
         </div>
 
@@ -522,6 +547,13 @@ export function ClassroomsContent({
                           </p>
                         )}
 
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-red-50 text-[10px] font-black text-red-600">
+                            {room.groupCount}
+                          </span>
+                          <span>กลุ่มสำหรับรอบจำลอง</span>
+                        </div>
+
                       </div>
 
                       {/* Card footer */}
@@ -614,7 +646,7 @@ export function ClassroomsContent({
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-slate-900">สร้างห้องเรียนใหม่</h3>
-                  <p className="text-xs text-slate-500">กำหนดชื่อและรายละเอียดห้องเรียน</p>
+                  <p className="text-xs text-slate-500">กำหนดชื่อ รายละเอียด และจำนวนกลุ่ม</p>
                 </div>
               </div>
               <button
@@ -646,6 +678,27 @@ export function ClassroomsContent({
                   placeholder="เช่น ห้องเรียนจำลอง A, รอบฝึกปฏิบัติการแพทย์"
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-red-500/10"
                 />
+              </div>
+
+              <div>
+                <label htmlFor="new-room-group-count" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  จำนวนกลุ่ม <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="new-room-group-count"
+                  type="number"
+                  required
+                  min={1}
+                  max={MAX_CLASSROOM_GROUP_COUNT}
+                  step={1}
+                  inputMode="numeric"
+                  value={newRoomGroupCount}
+                  onChange={(e) => setNewRoomGroupCount(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-xs text-slate-900 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-red-500/10"
+                />
+                <p className="mt-1.5 text-[11px] text-slate-400">
+                  ระบบจะสร้างกลุ่ม 1 ถึงกลุ่ม {newRoomGroupCount || "N"} ให้อัตโนมัติ (สูงสุด {MAX_CLASSROOM_GROUP_COUNT} กลุ่ม)
+                </p>
               </div>
 
               <div>
@@ -694,7 +747,7 @@ export function ClassroomsContent({
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-slate-900">แก้ไขข้อมูลห้องเรียน</h3>
-                  <p className="text-xs text-slate-500">ปรับปรุงชื่อหรือรายละเอียดห้องเรียน</p>
+                  <p className="text-xs text-slate-500">ปรับปรุงชื่อ รายละเอียด และจำนวนกลุ่ม</p>
                 </div>
               </div>
               <button
@@ -725,6 +778,27 @@ export function ClassroomsContent({
                   onChange={(e) => setEditRoomName(e.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-xs text-slate-900 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-red-500/10"
                 />
+              </div>
+
+              <div>
+                <label htmlFor="edit-room-group-count" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  จำนวนกลุ่ม <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="edit-room-group-count"
+                  type="number"
+                  required
+                  min={1}
+                  max={MAX_CLASSROOM_GROUP_COUNT}
+                  step={1}
+                  inputMode="numeric"
+                  value={editRoomGroupCount}
+                  onChange={(e) => setEditRoomGroupCount(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-2.5 text-xs text-slate-900 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-red-500/10"
+                />
+                <p className="mt-1.5 text-[11px] text-slate-400">
+                  หากลดจำนวน กลุ่มส่วนเกินจะถูกปิดใช้งาน และสามารถเปิดกลับได้ภายหลัง
+                </p>
               </div>
 
               <div>

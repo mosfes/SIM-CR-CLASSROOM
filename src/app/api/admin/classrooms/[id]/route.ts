@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorizeAdminRequest } from "@/lib/server/admin-api";
+import {
+  getSimulationGroups,
+  MAX_CLASSROOM_GROUP_COUNT,
+  parseClassroomGroupCount,
+} from "@/lib/simulation-groups";
 
 export async function GET(
   request: NextRequest,
@@ -76,6 +81,12 @@ export async function PUT(
 
     const existingClassroom = await prisma.classroom.findUnique({
       where: { id },
+      include: {
+        groups: {
+          orderBy: { createdAt: "asc" },
+          select: { id: true, name: true, isActive: true },
+        },
+      },
     });
 
     if (!existingClassroom) {
@@ -86,7 +97,19 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, description, isActive } = body;
+    const { name, description, isActive, groupCount: rawGroupCount } = body;
+
+    const groupCount =
+      rawGroupCount === undefined ? null : parseClassroomGroupCount(rawGroupCount);
+    if (rawGroupCount !== undefined && groupCount === null) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `จำนวนกลุ่มต้องเป็นจำนวนเต็มระหว่าง 1 ถึง ${MAX_CLASSROOM_GROUP_COUNT} กลุ่ม`,
+        },
+        { status: 400 }
+      );
+    }
 
     const dataToUpdate: {
       name?: string;
@@ -124,23 +147,91 @@ export async function PUT(
       dataToUpdate.description = description && typeof description === "string" ? description.trim() : null;
     }
 
-    const updatedClassroom = await prisma.classroom.update({
-      where: { id },
-      data: dataToUpdate,
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+    const activeGroups = existingClassroom.groups.filter((group) => group.isActive);
+    if (groupCount !== null && groupCount !== activeGroups.length) {
+      const activeSession = await prisma.simulationSession.findFirst({
+        where: { classroomId: id, status: { in: ["LOBBY", "RUNNING"] } },
+        select: { roomCode: true },
+      });
+
+      if (activeSession) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `ไม่สามารถเปลี่ยนจำนวนกลุ่มขณะมีรอบจำลอง ${activeSession.roomCode} กำลังใช้งาน`,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    const updatedClassroom = await prisma.$transaction(async (tx) => {
+      if (groupCount !== null) {
+        const inactiveGroups = existingClassroom.groups.filter((group) => !group.isActive);
+        const targetNames = getSimulationGroups(groupCount);
+
+        if (groupCount < activeGroups.length) {
+          const groupsToDeactivate = activeGroups.slice(groupCount);
+          await tx.classroomGroup.updateMany({
+            where: { id: { in: groupsToDeactivate.map((group) => group.id) } },
+            data: { isActive: false },
+          });
+        } else if (groupCount > activeGroups.length) {
+          const groupsToReactivate = inactiveGroups.slice(0, groupCount - activeGroups.length);
+          if (groupsToReactivate.length > 0) {
+            await Promise.all(
+              groupsToReactivate.map((group, index) =>
+                tx.classroomGroup.update({
+                  where: { id: group.id },
+                  data: {
+                    name: targetNames[activeGroups.length + index].name,
+                    isActive: true,
+                  },
+                })
+              )
+            );
+          }
+
+          const groupsToCreate = groupCount - activeGroups.length - groupsToReactivate.length;
+          if (groupsToCreate > 0) {
+            await tx.classroomGroup.createMany({
+              data: targetNames.slice(groupCount - groupsToCreate).map((group) => ({
+                classroomId: id,
+                name: group.name,
+                isActive: true,
+              })),
+            });
+          }
+        }
+      }
+
+      return tx.classroom.update({
+        where: { id },
+        data: dataToUpdate,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isActive: true,
+          groups: {
+            where: { isActive: true },
+            select: { id: true },
+          },
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
     });
+
+    const { groups, ...classroomData } = updatedClassroom;
 
     return NextResponse.json({
       success: true,
       message: "แก้ไขข้อมูลห้องเรียนสำเร็จ",
-      data: updatedClassroom,
+      data: {
+        ...classroomData,
+        groupCount: groups.length,
+      },
     });
   } catch (error) {
     console.error("Error updating classroom:", error);

@@ -64,14 +64,19 @@ export async function getClassroomsData() {
       name: true,
       description: true,
       isActive: true,
+      groups: {
+        where: { isActive: true },
+        select: { id: true },
+      },
       createdAt: true,
       updatedAt: true,
     },
     orderBy: { createdAt: "desc" },
   });
 
-  return classrooms.map((room) => ({
+  return classrooms.map(({ groups, ...room }) => ({
     ...room,
+    groupCount: groups.length,
     createdAt: room.createdAt.toISOString(),
     updatedAt: room.updatedAt.toISOString(),
   }));
