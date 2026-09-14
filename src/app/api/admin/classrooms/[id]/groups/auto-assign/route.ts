@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorizeAdminRequest } from "@/lib/server/admin-api";
+import { formatGroupNameForDisplay } from "@/lib/simulation-groups";
 
 export async function POST(
   request: NextRequest,
@@ -165,7 +166,15 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: `สุ่มจัดห้องตรวจสำเร็จ (${result.length} ห้องตรวจ)`,
-      data: updatedClassroom,
+      data: updatedClassroom
+        ? {
+            ...updatedClassroom,
+            groups: updatedClassroom.groups.map((group) => ({
+              ...group,
+              name: formatGroupNameForDisplay(group.name),
+            })),
+          }
+        : null,
     });
   } catch (error) {
     console.error("Error auto-assigning groups:", error);

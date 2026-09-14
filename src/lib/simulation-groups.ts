@@ -13,6 +13,11 @@ export function getSimulationGroups(count: number) {
   }));
 }
 
+/** Convert names saved before the terminology change without changing IDs or history. */
+export function formatGroupNameForDisplay(name: string) {
+  return name.replace(/^กลุ่ม(?=\s|$)/u, "ห้องตรวจ");
+}
+
 export function getDefaultSimulationGroups() {
   return getSimulationGroups(DEFAULT_SIMULATION_GROUP_COUNT);
 }

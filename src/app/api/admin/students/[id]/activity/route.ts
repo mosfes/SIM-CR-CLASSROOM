@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorizeAdminRequest } from "@/lib/server/admin-api";
 import { parseLabResults } from "@/lib/disease-lab-results";
+import { formatGroupNameForDisplay } from "@/lib/simulation-groups";
 
 export async function GET(
   request: NextRequest,
@@ -316,7 +317,7 @@ export async function GET(
         createdAt: item.createdAt.toISOString(),
         queueNumber: item.queueNumber,
         classroomName: item.classroomName,
-        groupName: item.groupName,
+        groupName: formatGroupNameForDisplay(item.groupName),
         patient: {
           prefix: item.patientPrefix,
           firstName: item.patientFirstName,
@@ -353,7 +354,7 @@ export async function GET(
         createdAt: item.createdAt.toISOString(),
         queueNumber: item.queueNumber,
         classroomName: item.classroomName,
-        groupName: item.groupName,
+        groupName: formatGroupNameForDisplay(item.groupName),
         patient: {
           prefix: item.patientPrefix,
           firstName: item.patientFirstName,
@@ -390,7 +391,7 @@ export async function GET(
         createdAt: item.createdAt.toISOString(),
         queueNumber: item.queueNumber,
         classroomName: item.classroomName,
-        groupName: item.groupName,
+        groupName: formatGroupNameForDisplay(item.groupName),
         patient: {
           prefix: item.patientPrefix,
           firstName: item.patientFirstName,
@@ -421,7 +422,7 @@ export async function GET(
         createdAt: item.createdAt.toISOString(),
         queueNumber: item.queueNumber,
         classroomName: item.classroomName,
-        groupName: item.groupName,
+        groupName: formatGroupNameForDisplay(item.groupName),
         patient: {
           prefix: item.patientPrefix,
           firstName: item.patientFirstName,
@@ -457,7 +458,7 @@ export async function GET(
         createdAt: item.createdAt.toISOString(),
         queueNumber: item.queueNumber,
         classroomName: item.classroomName,
-        groupName: item.groupName,
+        groupName: formatGroupNameForDisplay(item.groupName),
         patient: {
           prefix: item.patientPrefix,
           firstName: item.patientFirstName,
@@ -486,6 +487,13 @@ export async function GET(
       data: {
         student: {
           ...student,
+          groupMemberships: student.groupMemberships.map((membership) => ({
+            ...membership,
+            group: {
+              ...membership.group,
+              name: formatGroupNameForDisplay(membership.group.name),
+            },
+          })),
           createdAt: student.createdAt.toISOString(),
         },
         summary,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorizeAdminRequest } from "@/lib/server/admin-api";
 import {
+  formatGroupNameForDisplay,
   getSimulationGroups,
   MAX_CLASSROOM_GROUP_COUNT,
   parseClassroomGroupCount,
@@ -51,7 +52,13 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: classroom,
+      data: {
+        ...classroom,
+        groups: classroom.groups.map((group) => ({
+          ...group,
+          name: formatGroupNameForDisplay(group.name),
+        })),
+      },
     });
   } catch (error) {
     console.error("Error fetching classroom:", error);

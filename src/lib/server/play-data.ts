@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { parseLabResults } from "@/lib/disease-lab-results";
+import { formatGroupNameForDisplay } from "@/lib/simulation-groups";
 
 export async function getActiveClassroomsWithGroups() {
   const classrooms = await prisma.classroom.findMany({
@@ -16,7 +17,13 @@ export async function getActiveClassroomsWithGroups() {
       },
     },
   });
-  return classrooms;
+  return classrooms.map((classroom) => ({
+    ...classroom,
+    groups: classroom.groups.map((group) => ({
+      ...group,
+      name: formatGroupNameForDisplay(group.name),
+    })),
+  }));
 }
 
 export async function getStudentById(id: string) {
@@ -29,7 +36,7 @@ export async function getStudentById(id: string) {
 
 export async function getClassroomById(id: string) {
   if (!id) return null;
-  return prisma.classroom.findFirst({
+  const classroom = await prisma.classroom.findFirst({
     where: { id, isActive: true },
     select: {
       id: true,
@@ -42,14 +49,28 @@ export async function getClassroomById(id: string) {
       },
     },
   });
+
+  if (!classroom) return null;
+
+  return {
+    ...classroom,
+    groups: classroom.groups.map((group) => ({
+      ...group,
+      name: formatGroupNameForDisplay(group.name),
+    })),
+  };
 }
 
 export async function getGroupById(id: string, classroomId: string) {
   if (!id) return null;
-  return prisma.classroomGroup.findFirst({
+  const group = await prisma.classroomGroup.findFirst({
     where: { id, classroomId, isActive: true },
     select: { id: true, name: true },
   });
+
+  return group
+    ? { ...group, name: formatGroupNameForDisplay(group.name) }
+    : null;
 }
 
 export async function getAvailablePatientCards(

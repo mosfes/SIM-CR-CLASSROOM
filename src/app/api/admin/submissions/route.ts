@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { authorizeAdminRequest } from "@/lib/server/admin-api";
 import { parseLabResults } from "@/lib/disease-lab-results";
+import { formatGroupNameForDisplay } from "@/lib/simulation-groups";
 
 type SubmissionStage =
   | "WAITING_NURSE"
@@ -150,7 +151,7 @@ async function getSubmissionDetail(id: string) {
     },
     group: {
       id: card.group?.id || card.groupId || "",
-      name: card.group?.name || card.groupName || "ห้องตรวจไม่ระบุ",
+      name: formatGroupNameForDisplay(card.group?.name || card.groupName || "ห้องตรวจไม่ระบุ"),
     },
     classroom: { id: card.classroomId || "", name: card.classroomName },
     cardRoom: {
@@ -303,6 +304,13 @@ export async function GET(request: NextRequest) {
           },
         })
       : [];
+    const displayClassrooms = classrooms.map((classroom) => ({
+      ...classroom,
+      groups: classroom.groups.map((group) => ({
+        ...group,
+        name: formatGroupNameForDisplay(group.name),
+      })),
+    }));
 
     const targetClassroomId = classroomId || classrooms[0]?.id || "";
     if (!targetClassroomId) {
@@ -310,7 +318,7 @@ export async function GET(request: NextRequest) {
         {
           success: true,
           data: {
-            classrooms,
+            classrooms: displayClassrooms,
             selectedClassroomId: "",
             selectedGroupId: groupId || "ALL",
             groupCounts: {},
@@ -461,7 +469,10 @@ export async function GET(request: NextRequest) {
           gender: card.gender,
           maritalStatus: card.maritalStatus,
         },
-        group: { id: card.groupId || "", name: card.groupName || "ห้องตรวจไม่ระบุ" },
+        group: {
+          id: card.groupId || "",
+          name: formatGroupNameForDisplay(card.groupName || "ห้องตรวจไม่ระบุ"),
+        },
         classroom: { id: card.classroomId || "", name: card.classroomName },
         cardRoom: {
           clerkName: card.clerkName,
@@ -527,7 +538,7 @@ export async function GET(request: NextRequest) {
       {
         success: true,
         data: {
-          classrooms,
+          classrooms: displayClassrooms,
           selectedClassroomId: targetClassroomId,
           selectedGroupId: groupId || "ALL",
           groupCounts,

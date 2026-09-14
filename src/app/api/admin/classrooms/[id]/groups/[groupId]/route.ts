@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorizeAdminRequest } from "@/lib/server/admin-api";
+import { formatGroupNameForDisplay } from "@/lib/simulation-groups";
 
 export async function PUT(
   request: NextRequest,
@@ -80,7 +81,10 @@ export async function PUT(
     return NextResponse.json({
       success: true,
       message: "แก้ไขข้อมูลห้องตรวจสำเร็จ",
-      data: updatedGroup,
+      data: {
+        ...updatedGroup,
+        name: formatGroupNameForDisplay(updatedGroup.name),
+      },
     });
   } catch (error) {
     console.error("Error updating group:", error);

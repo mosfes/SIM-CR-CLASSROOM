@@ -2,7 +2,10 @@ import { Prisma } from "@prisma/client";
 import { randomInt } from "crypto";
 import type { PlayRoleId } from "@/lib/play/roles";
 import { prisma } from "@/lib/prisma";
-import { getDefaultSimulationGroups } from "@/lib/simulation-groups";
+import {
+  formatGroupNameForDisplay,
+  getDefaultSimulationGroups,
+} from "@/lib/simulation-groups";
 
 const ROOM_CODE_PATTERN = /^\d{6}$/;
 const PLAY_ROLE_IDS = new Set<PlayRoleId>([
@@ -82,7 +85,16 @@ export async function createSimulationSession({
           })),
         });
 
-        return session;
+        return {
+          ...session,
+          classroom: {
+            ...session.classroom,
+            groups: session.classroom.groups.map((group) => ({
+              ...group,
+              name: formatGroupNameForDisplay(group.name),
+            })),
+          },
+        };
       });
     } catch (error) {
       if (
@@ -137,7 +149,13 @@ export async function getSimulationSessionForEntry(roomCode: string) {
     id: session.id,
     roomCode: session.roomCode,
     status: session.status,
-    classroom: session.classroom,
+    classroom: {
+      ...session.classroom,
+      groups: session.classroom.groups.map((group) => ({
+        ...group,
+        name: formatGroupNameForDisplay(group.name),
+      })),
+    },
     students,
   };
 }
@@ -256,7 +274,10 @@ export async function getParticipantSessionContext({
       name: participant.student.name,
       studentId: participant.student.studentId,
     },
-    group: { id: participant.group.id, name: participant.group.name },
+    group: {
+      id: participant.group.id,
+      name: formatGroupNameForDisplay(participant.group.name),
+    },
     simulation: {
       id: participant.simulation.id,
       roomCode: participant.simulation.roomCode,
@@ -264,7 +285,10 @@ export async function getParticipantSessionContext({
       classroom: {
         id: participant.simulation.classroom.id,
         name: participant.simulation.classroom.name,
-        groups: participant.simulation.classroom.groups,
+        groups: participant.simulation.classroom.groups.map((group) => ({
+          ...group,
+          name: formatGroupNameForDisplay(group.name),
+        })),
       },
     },
   };
@@ -316,7 +340,10 @@ export async function getLobbyParticipantState({
       id: participant.student.id,
       name: participant.student.name,
     },
-    group: { id: participant.group.id, name: participant.group.name },
+    group: {
+      id: participant.group.id,
+      name: formatGroupNameForDisplay(participant.group.name),
+    },
     simulation: {
       id: participant.simulation.id,
       roomCode: participant.simulation.roomCode,
@@ -448,6 +475,11 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
   const doctorsByGroup = makeCountMap(doctorDiagnoses);
   const pharmaciesByGroup = makeCountMap(pharmacyDispenses);
 
+  const displayGroups = session.classroom.groups.map((group) => ({
+    ...group,
+    name: formatGroupNameForDisplay(group.name),
+  }));
+
   const participants = session.participants
     .filter((participant) => isPlayRoleId(participant.role))
     .map((participant) => ({
@@ -465,10 +497,13 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
     createdAt: session.createdAt.toISOString(),
     startedAt: session.startedAt?.toISOString() ?? null,
     endedAt: session.endedAt?.toISOString() ?? null,
-    classroom: session.classroom,
+    classroom: {
+      ...session.classroom,
+      groups: displayGroups,
+    },
     participantCount: participants.length,
     participants,
-    groups: session.classroom.groups.map((group) => {
+    groups: displayGroups.map((group) => {
       const members = participants.filter((participant) => participant.groupId === group.id);
       return {
         id: group.id,

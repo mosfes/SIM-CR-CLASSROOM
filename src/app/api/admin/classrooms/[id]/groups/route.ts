@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorizeAdminRequest } from "@/lib/server/admin-api";
+import { formatGroupNameForDisplay } from "@/lib/simulation-groups";
 
 export async function POST(
   request: NextRequest,
@@ -71,7 +72,10 @@ export async function POST(
       {
         success: true,
         message: "เพิ่มห้องตรวจในห้องเรียนสำเร็จ",
-        data: group,
+        data: {
+          ...group,
+          name: formatGroupNameForDisplay(group.name),
+        },
       },
       { status: 201 }
     );
