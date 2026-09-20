@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { authorizeAdminRequest } from "@/lib/server/admin-api";
 import { normalizeLabResultsInput, parseLabResults } from "@/lib/disease-lab-results";
+import { normalizeNurseChoiceInput } from "@/lib/nurse-choices";
 import {
   PHARMACY_HORMONE_LABEL_MAX_LENGTH,
   PHARMACY_TREATMENT_LABEL_MAX_LENGTH,
@@ -82,6 +83,8 @@ export async function PUT(
       hormoneChoiceLabel?: string | null;
       treatmentChoiceKey?: string | null;
       treatmentChoiceLabel?: string | null;
+      endocrineGland?: string | null;
+      abnormalHormone?: string | null;
       isActive?: boolean;
     } = {};
 
@@ -197,6 +200,30 @@ export async function PUT(
           { status: 400 }
         );
       }
+    }
+
+    // เฉลยของสถานีพยาบาล: ส่งเป็นข้อความว่าง = ล้างเฉลยข้อนั้นของโรคนี้
+    try {
+      if (body.endocrineGland !== undefined) {
+        dataToUpdate.endocrineGland = normalizeNurseChoiceInput(
+          body.endocrineGland,
+          "ต่อมไร้ท่อที่ผิดปกติ"
+        );
+      }
+      if (body.abnormalHormone !== undefined) {
+        dataToUpdate.abnormalHormone = normalizeNurseChoiceInput(
+          body.abnormalHormone,
+          "ฮอร์โมนที่ผิดปกติ"
+        );
+      }
+    } catch (error) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: error instanceof Error ? error.message : "ข้อมูลเฉลยของสถานีพยาบาลไม่ถูกต้อง",
+        },
+        { status: 400 }
+      );
     }
 
     const updatedDisease = await prisma.disease.update({

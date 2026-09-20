@@ -478,7 +478,7 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
   // Only compute the heavier per-student results breakdown once the round has
   // ended: the projector polls this snapshot every few seconds while running,
   // and this data is only surfaced in the end-of-game summary screen.
-  const [doctorScoreRows, labScoreRows, pharmacyScoreRows] =
+  const [doctorScoreRows, labScoreRows, pharmacyScoreRows, nurseScoreRows] =
     session.status === "ENDED"
       ? await Promise.all([
           prisma.doctorDiagnosis.findMany({
@@ -511,13 +511,25 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
               evaluationScore: true,
             },
           }),
+          prisma.nurseInterview.findMany({
+            where: { simulationId },
+            select: {
+              groupId: true,
+              nurseId: true,
+              nurseName: true,
+              isGlandCorrect: true,
+              isHormoneCorrect: true,
+              evaluationScore: true,
+            },
+          }),
         ])
-      : [[], [], []];
+      : [[], [], [], []];
 
   const buildGroupResults = (groupId: string) => {
     const groupDoctorRows = doctorScoreRows.filter((row) => row.groupId === groupId);
     const groupLabRows = labScoreRows.filter((row) => row.groupId === groupId);
     const groupPharmacyRows = pharmacyScoreRows.filter((row) => row.groupId === groupId);
+    const groupNurseRows = nurseScoreRows.filter((row) => row.groupId === groupId);
 
     const diagnosedCount = groupDoctorRows.length;
     const correctCount = groupDoctorRows.filter((row) => row.isCorrect === true).length;
@@ -537,12 +549,23 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
     const pharmacySuccessRate =
       pharmacyCount > 0 ? Math.round((pharmacyCorrectCount / pharmacyCount) * 100) : 0;
 
+    // การซักประวัติที่บันทึกก่อนมีตัวเลือก (หรือโรคที่ครูยังไม่กรอกเฉลย) ไม่มีคะแนน จึงไม่นับเป็นถูกหรือผิด
+    // "ถูกครบ" = ทุกข้อที่มีเฉลยตอบถูก, ที่เหลือที่มีคะแนนแล้วนับเป็น "ไม่ครบ"
+    const nurseRowsScored = groupNurseRows.filter((row) => row.evaluationScore !== null);
+    const nurseCount = nurseRowsScored.length;
+    const nurseCorrectCount = nurseRowsScored.filter(
+      (row) => row.isGlandCorrect !== false && row.isHormoneCorrect !== false
+    ).length;
+    const nurseWrongCount = nurseCount - nurseCorrectCount;
+    const nurseSuccessRate = nurseCount > 0 ? Math.round((nurseCorrectCount / nurseCount) * 100) : 0;
+
     const doctorScore = groupDoctorRows.reduce((sum, row) => sum + (row.evaluationScore ?? 0), 0);
     const labScore = groupLabRows.reduce((sum, row) => sum + (row.evaluationScore ?? 0), 0);
     const pharmacyScore = groupPharmacyRows.reduce(
       (sum, row) => sum + (row.evaluationScore ?? 0),
       0
     );
+    const nurseScore = groupNurseRows.reduce((sum, row) => sum + (row.evaluationScore ?? 0), 0);
 
     const scoreByStudent = new Map<string, { name: string; score: number }>();
     for (const row of groupDoctorRows) {
@@ -564,7 +587,14 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
       scoreByStudent.set(row.pharmacistId, entry);
     }
 
-    const totalScore = doctorScore + labScore + pharmacyScore;
+    for (const row of groupNurseRows) {
+      if (!row.nurseId) continue;
+      const entry = scoreByStudent.get(row.nurseId) ?? { name: row.nurseName, score: 0 };
+      entry.score += row.evaluationScore ?? 0;
+      scoreByStudent.set(row.nurseId, entry);
+    }
+
+    const totalScore = doctorScore + labScore + pharmacyScore + nurseScore;
     const topScorers = Array.from(scoreByStudent.entries())
       .map(([studentId, { name, score }]) => ({ studentId, name, score }))
       .sort((a, b) => b.score - a.score)
@@ -583,9 +613,14 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
       pharmacyCorrectCount,
       pharmacyWrongCount,
       pharmacySuccessRate,
+      nurseCount,
+      nurseCorrectCount,
+      nurseWrongCount,
+      nurseSuccessRate,
       doctorScore,
       labScore,
       pharmacyScore,
+      nurseScore,
       totalScore,
       topScorers,
     };

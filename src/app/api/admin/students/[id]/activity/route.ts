@@ -116,6 +116,11 @@ export async function GET(
             chiefComplaint: true,
             symptomDescription: true,
             notes: true,
+            endocrineGlandChoice: true,
+            abnormalHormoneChoice: true,
+            isGlandCorrect: true,
+            isHormoneCorrect: true,
+            evaluationScore: true,
             createdAt: true,
             doctorDiagnosis: {
               select: {
@@ -266,6 +271,22 @@ export async function GET(
           )
         : null;
 
+    // Calculate Nurse metrics
+    // การซักประวัติที่บันทึกก่อนมีตัวเลือกต่อมไร้ท่อ/ฮอร์โมนไม่มีเฉลย จึงไม่นำมาคิดความแม่นยำ
+    // "ถูกครบ" = ทุกข้อที่โรคนั้นมีเฉลยตอบถูก
+    const nurseScored = nurseInterviews.filter((n) => typeof n.evaluationScore === "number");
+    const nurseCorrectCount = nurseScored.filter(
+      (n) => n.isGlandCorrect !== false && n.isHormoneCorrect !== false
+    ).length;
+    const nurseAvgScore =
+      nurseScored.length > 0
+        ? Number(
+            (
+              nurseScored.reduce((sum, n) => sum + (n.evaluationScore || 0), 0) / nurseScored.length
+            ).toFixed(1)
+          )
+        : null;
+
     // Calculate Pharmacist metrics
     const pharmacistTotalTablets = pharmacyDispenses.reduce(
       (sum, p) => sum + (p.totalTablets || 0),
@@ -315,6 +336,13 @@ export async function GET(
             ? Math.round((doctorCorrectCount / doctorDiagnoses.length) * 100)
             : 0,
         avgScore: doctorAvgScore,
+      },
+      nurseStats: {
+        total: nurseInterviews.length,
+        correct: nurseCorrectCount,
+        accuracyPercent:
+          nurseScored.length > 0 ? Math.round((nurseCorrectCount / nurseScored.length) * 100) : 0,
+        avgScore: nurseAvgScore,
       },
       pharmacistStats: {
         total: pharmacyDispenses.length,
@@ -419,6 +447,11 @@ export async function GET(
           chiefComplaint: item.chiefComplaint,
           symptomDescription: item.symptomDescription,
           notes: item.notes,
+          endocrineGlandChoice: item.endocrineGlandChoice,
+          abnormalHormoneChoice: item.abnormalHormoneChoice,
+          isGlandCorrect: item.isGlandCorrect,
+          isHormoneCorrect: item.isHormoneCorrect,
+          evaluationScore: item.evaluationScore,
           doctorName: item.doctorDiagnosis?.doctorName || null,
           doctorDisease: item.doctorDiagnosis?.diseaseName || null,
         },

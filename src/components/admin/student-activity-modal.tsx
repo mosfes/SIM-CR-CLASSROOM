@@ -67,6 +67,11 @@ interface ActivityPayload {
   aiStrengths?: string | null;
   aiEvaluatedAt?: string | null;
 
+  // Nurse
+  endocrineGlandChoice?: string | null;
+  abnormalHormoneChoice?: string | null;
+  isGlandCorrect?: boolean | null;
+
   // Pharmacist
   doctorDiagnosisText?: string | null;
   medicines?: Array<{
@@ -132,6 +137,12 @@ interface ActivityResponseData {
     medTechCount: number;
     doctorCount: number;
     pharmacistCount: number;
+    nurseStats: {
+      total: number;
+      correct: number;
+      accuracyPercent: number;
+      avgScore: number | null;
+    };
     medTechStats: {
       total: number;
       correct: number;
@@ -409,8 +420,17 @@ export function StudentActivityModal({ student, onClose }: StudentActivityModalP
                     {data.summary.nurseCount}
                   </span>
                   <span className="text-xs text-slate-500 font-normal">เคส</span>
+                  {data.summary.nurseStats.avgScore !== null && (
+                    <span className="ml-auto text-[11px] font-semibold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-md">
+                      เฉลี่ย {data.summary.nurseStats.avgScore}/2
+                    </span>
+                  )}
                 </div>
-                <p className="mt-0.5 text-[11px] text-slate-500 truncate">ซักประวัติและวัดสัญญาณชีพ</p>
+                <p className="mt-0.5 text-[11px] text-slate-500 truncate">
+                  {data.summary.nurseStats.avgScore !== null
+                    ? `ถูกครบทุกข้อ ${data.summary.nurseStats.correct} เคส · แม่นยำ ${data.summary.nurseStats.accuracyPercent}%`
+                    : "ซักประวัติและวัดสัญญาณชีพ"}
+                </p>
               </button>
 
               {/* Medical Technologist Card */}
@@ -849,6 +869,50 @@ export function StudentActivityModal({ student, onClose }: StudentActivityModalP
                                   บันทึกเพิ่มเติมของพยาบาล:
                                 </span>
                                 <p className="text-amber-800 text-xs mt-0.5">{act.payload.notes}</p>
+                              </div>
+                            )}
+
+                            {/* คำตอบต่อมไร้ท่อ/ฮอร์โมนที่ผิดปกติ */}
+                            {act.payload.endocrineGlandChoice && (
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                {(
+                                  [
+                                    ["ต่อมไร้ท่อที่ผิดปกติ", act.payload.endocrineGlandChoice, act.payload.isGlandCorrect],
+                                    ["ฮอร์โมนที่ผิดปกติ", act.payload.abnormalHormoneChoice, act.payload.isHormoneCorrect],
+                                  ] as const
+                                ).map(([heading, choice, correct]) => (
+                                  <div
+                                    key={heading}
+                                    className={`rounded-xl border p-2.5 ${
+                                      correct === true
+                                        ? "border-emerald-200 bg-emerald-50/70"
+                                        : correct === false
+                                          ? "border-rose-200 bg-rose-50/70"
+                                          : "border-slate-200 bg-white"
+                                    }`}
+                                  >
+                                    <div className="mb-1 flex items-center justify-between">
+                                      <span className="font-semibold text-slate-500">{heading}</span>
+                                      <span
+                                        className={`font-bold ${
+                                          correct === true
+                                            ? "text-emerald-700"
+                                            : correct === false
+                                              ? "text-rose-600"
+                                              : "text-slate-400"
+                                        }`}
+                                      >
+                                        {correct === true ? "ถูก" : correct === false ? "ผิด" : "ไม่มีเฉลย"}
+                                      </span>
+                                    </div>
+                                    <p className="font-medium text-slate-800">{choice}</p>
+                                  </div>
+                                ))}
+                                {typeof act.payload.evaluationScore === "number" && (
+                                  <p className="text-right text-[11px] font-bold text-emerald-900 sm:col-span-2">
+                                    คะแนนสถานีพยาบาล: {act.payload.evaluationScore}/2
+                                  </p>
+                                )}
                               </div>
                             )}
                           </div>

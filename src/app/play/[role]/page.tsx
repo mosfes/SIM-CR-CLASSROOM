@@ -8,6 +8,7 @@ import {
   getAvailableNurseInterviews,
   getAvailablePatientCards,
   getLabPanels,
+  getNurseChoiceOptions,
   getNurseInterviewsAwaitingLab,
   getPharmacyChoiceOptions,
 } from "@/lib/server/play-data";
@@ -69,10 +70,13 @@ export default async function PlayRoleDashboard({
   const group = participant.group;
   const student = participant.student;
 
-  const availablePatientCards =
+  const [availablePatientCards, nurseChoiceOptions] =
     role.id === "nurse"
-      ? await getAvailablePatientCards(classroom.id, group.id, activeSimulationId)
-      : [];
+      ? await Promise.all([
+          getAvailablePatientCards(classroom.id, group.id, activeSimulationId),
+          getNurseChoiceOptions(),
+        ])
+      : [[], { glands: [], hormones: [] }];
   const activeDiseases =
     role.id === "card-room" || role.id === "doctor" ? await getActiveDiseases() : [];
   const availableNurseInterviews =
@@ -147,7 +151,15 @@ export default async function PlayRoleDashboard({
         {role.id === "card-room" ? (
           <PatientCardForm clerk={student} classroom={classroom} group={group} diseases={activeDiseases} simulationId={activeSimulationId} />
         ) : role.id === "nurse" ? (
-          <NurseInterviewForm nurse={student} classroom={classroom} group={group} initialPatientCards={availablePatientCards} simulationId={activeSimulationId} />
+          <NurseInterviewForm
+            nurse={student}
+            classroom={classroom}
+            group={group}
+            initialPatientCards={availablePatientCards}
+            glandOptions={nurseChoiceOptions.glands}
+            hormoneOptions={nurseChoiceOptions.hormones}
+            simulationId={activeSimulationId}
+          />
         ) : role.id === "medtech" ? (
           <MedTechLabForm medTech={student} classroom={classroom} group={group} initialLabQueue={labQueue} labPanels={labPanels} simulationId={activeSimulationId} />
         ) : role.id === "doctor" ? (

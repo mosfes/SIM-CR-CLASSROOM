@@ -238,3 +238,76 @@ export function DiseasePharmacyChoicesEditor({
     </div>
   );
 }
+
+/**
+ * เฉลยของสถานีพยาบาลสำหรับโรคนี้: ต่อมไร้ท่อและฮอร์โมนที่ผิดปกติ
+ * หลายโรคใช้ข้อความเดียวกันได้ (เช่น "ต่อมไทรอยด์") จึงมีรายการแนะนำจากข้อความที่โรคอื่นใช้อยู่แล้ว
+ * เพื่อไม่ให้พิมพ์ต่างกันนิดเดียวแล้วกลายเป็นตัวเลือกคนละอัน
+ */
+export function DiseaseNurseChoicesEditor({
+  namePrefix,
+  gland,
+  hormone,
+  glandSuggestions,
+  hormoneSuggestions,
+  onChange,
+  disabled = false,
+}: {
+  namePrefix: string;
+  gland: string;
+  hormone: string;
+  glandSuggestions: string[];
+  hormoneSuggestions: string[];
+  onChange: (field: "gland" | "hormone", value: string) => void;
+  disabled?: boolean;
+}) {
+  const inputClass =
+    "w-full rounded-xl border border-slate-200 py-2 px-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-3 focus:ring-red-500/10 disabled:bg-slate-50";
+  const glandListId = `${namePrefix}_gland_options`;
+  const hormoneListId = `${namePrefix}_hormone_options`;
+
+  return (
+    <div className="grid gap-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 sm:grid-cols-2">
+      <div>
+        <label className="mb-1 block text-[10px] font-semibold text-slate-600">ต่อมไร้ท่อที่ผิดปกติ</label>
+        <input
+          type="text"
+          list={glandListId}
+          maxLength={191}
+          name={`${namePrefix}_endocrine_gland`}
+          autoComplete="off"
+          placeholder="เช่น ต่อมไทรอยด์"
+          value={gland}
+          disabled={disabled}
+          onChange={(e) => onChange("gland", e.target.value)}
+          className={inputClass}
+        />
+        <datalist id={glandListId}>
+          {glandSuggestions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      </div>
+      <div>
+        <label className="mb-1 block text-[10px] font-semibold text-slate-600">ฮอร์โมนที่ผิดปกติ</label>
+        <input
+          type="text"
+          list={hormoneListId}
+          maxLength={191}
+          name={`${namePrefix}_abnormal_hormone`}
+          autoComplete="off"
+          placeholder="เช่น T3, T4"
+          value={hormone}
+          disabled={disabled}
+          onChange={(e) => onChange("hormone", e.target.value)}
+          className={inputClass}
+        />
+        <datalist id={hormoneListId}>
+          {hormoneSuggestions.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      </div>
+    </div>
+  );
+}

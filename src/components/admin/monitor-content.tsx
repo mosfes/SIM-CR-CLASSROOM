@@ -79,6 +79,11 @@ interface SubmissionItem {
     chiefComplaint: string | null;
     symptomDescription: string;
     notes: string | null;
+    endocrineGlandChoice: string | null;
+    abnormalHormoneChoice: string | null;
+    isGlandCorrect: boolean | null;
+    isHormoneCorrect: boolean | null;
+    evaluationScore: number | null;
     createdAt: string;
   } | null;
   lab: {
@@ -152,6 +157,11 @@ interface SubmissionListItem {
     pulseBpm: number;
     chiefComplaint: string | null;
     symptomDescription: string;
+    endocrineGlandChoice: string | null;
+    abnormalHormoneChoice: string | null;
+    isGlandCorrect: boolean | null;
+    isHormoneCorrect: boolean | null;
+    evaluationScore: number | null;
     createdAt: string;
   } | null;
   lab: {
@@ -208,7 +218,8 @@ interface Pagination {
 }
 
 const SCORE_MAXIMUMS = {
-  total: 15,
+  total: 17,
+  nurse: 2,
   doctor: 10,
   medTech: 2,
   pharmacist: 3,
@@ -219,17 +230,19 @@ function formatScore(score: number | null | undefined, maximum: number) {
 }
 
 function ScoreSummary({
+  nurseScore,
   doctorScore,
   medTechScore,
   pharmacistScore,
   compact = false,
 }: {
+  nurseScore: number | null | undefined;
   doctorScore: number | null | undefined;
   medTechScore: number | null | undefined;
   pharmacistScore: number | null | undefined;
   compact?: boolean;
 }) {
-  const scoredParts = [doctorScore, medTechScore, pharmacistScore].filter(
+  const scoredParts = [nurseScore, doctorScore, medTechScore, pharmacistScore].filter(
     (score): score is number => typeof score === "number"
   );
 
@@ -260,6 +273,10 @@ function ScoreSummary({
           <strong className="font-mono text-emerald-900">
             {formatScore(totalScore, SCORE_MAXIMUMS.total)}
           </strong>
+        </span>
+        <span className={`${chipClass} border-emerald-200 text-emerald-800`}>
+          <span>พยาบาล</span>
+          <strong className="font-mono">{formatScore(nurseScore ?? 0, SCORE_MAXIMUMS.nurse)}</strong>
         </span>
         <span className={`${chipClass} border-sky-200 text-sky-800`}>
           <span>แพทย์</span>
@@ -928,6 +945,7 @@ export function MonitorContent({
 
                     {/* Score Summary */}
                     <ScoreSummary
+                      nurseScore={sub.nurse?.evaluationScore}
                       doctorScore={sub.doctor?.evaluationScore}
                       medTechScore={sub.lab?.evaluationScore}
                       pharmacistScore={sub.pharmacy?.evaluationScore}
@@ -1038,6 +1056,48 @@ export function MonitorContent({
                             {sub.nurse.systolicBp}/{sub.nurse.diastolicBp} · {sub.nurse.pulseBpm} bpm
                           </span>
                         </div>
+                        {sub.nurse.endocrineGlandChoice && (
+                          <>
+                            <div className="flex justify-between gap-2">
+                              <span className="shrink-0 text-slate-400">ต่อมไร้ท่อ:</span>
+                              <span
+                                className={`truncate text-right font-bold ${
+                                  sub.nurse.isGlandCorrect === false ? "text-rose-600" : "text-emerald-700"
+                                }`}
+                              >
+                                {sub.nurse.endocrineGlandChoice}
+                                {sub.nurse.isGlandCorrect === true
+                                  ? " ✓"
+                                  : sub.nurse.isGlandCorrect === false
+                                    ? " ✗"
+                                    : ""}
+                              </span>
+                            </div>
+                            <div className="flex justify-between gap-2">
+                              <span className="shrink-0 text-slate-400">ฮอร์โมน:</span>
+                              <span
+                                className={`truncate text-right font-bold ${
+                                  sub.nurse.isHormoneCorrect === false ? "text-rose-600" : "text-emerald-700"
+                                }`}
+                              >
+                                {sub.nurse.abnormalHormoneChoice}
+                                {sub.nurse.isHormoneCorrect === true
+                                  ? " ✓"
+                                  : sub.nurse.isHormoneCorrect === false
+                                    ? " ✗"
+                                    : ""}
+                              </span>
+                            </div>
+                            {sub.nurse.evaluationScore !== null && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">คะแนน:</span>
+                                <span className="font-bold text-emerald-900">
+                                  {sub.nurse.evaluationScore}/{SCORE_MAXIMUMS.nurse}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        )}
                         <p className="text-[11px] text-slate-600 line-clamp-1">
                           <span className="text-slate-400">อาการ:</span> {sub.nurse.symptomDescription}
                         </p>
@@ -1389,6 +1449,7 @@ export function MonitorContent({
 
             <div data-pdf-block className="mt-4">
               <ScoreSummary
+                nurseScore={selectedSubmission.nurse?.evaluationScore}
                 doctorScore={selectedSubmission.doctor?.evaluationScore}
                 medTechScore={selectedSubmission.lab?.evaluationScore}
                 pharmacistScore={selectedSubmission.pharmacy?.evaluationScore}
@@ -1509,6 +1570,62 @@ export function MonitorContent({
                         </div>
                       )}
                     </div>
+
+                    {selectedSubmission.nurse.endocrineGlandChoice && (
+                      <div data-pdf-block className="space-y-2">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {(
+                            [
+                              [
+                                "ต่อมไร้ท่อที่ผิดปกติ",
+                                selectedSubmission.nurse.endocrineGlandChoice,
+                                selectedSubmission.nurse.isGlandCorrect,
+                              ],
+                              [
+                                "ฮอร์โมนที่ผิดปกติ",
+                                selectedSubmission.nurse.abnormalHormoneChoice,
+                                selectedSubmission.nurse.isHormoneCorrect,
+                              ],
+                            ] as const
+                          ).map(([heading, choice, correct]) => (
+                            <div
+                              key={heading}
+                              className={`rounded-xl border p-3 ${
+                                correct === true
+                                  ? "border-emerald-200 bg-emerald-50/60"
+                                  : correct === false
+                                    ? "border-rose-200 bg-rose-50/60"
+                                    : "border-slate-200 bg-white"
+                              }`}
+                            >
+                              <div className="mb-1 flex items-center justify-between">
+                                <span className="font-bold text-slate-500">{heading}</span>
+                                <span
+                                  className={`font-bold ${
+                                    correct === true
+                                      ? "text-emerald-700"
+                                      : correct === false
+                                        ? "text-rose-600"
+                                        : "text-slate-400"
+                                  }`}
+                                >
+                                  {correct === true ? "ถูกต้อง" : correct === false ? "ไม่ถูกต้อง" : "ไม่มีเฉลย"}
+                                </span>
+                              </div>
+                              <p className="font-semibold text-slate-800">{choice}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {selectedSubmission.nurse.evaluationScore !== null && (
+                          <div className="flex items-center justify-between rounded-xl border border-emerald-100 bg-white p-3 text-sm font-bold">
+                            <span>คะแนนสถานีพยาบาล:</span>
+                            <span className="text-emerald-900">
+                              {selectedSubmission.nurse.evaluationScore}/{SCORE_MAXIMUMS.nurse}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className="text-xs text-slate-400 italic">ยังไม่มีการบันทึกจากพยาบาล</p>

@@ -18,6 +18,7 @@ import {
   XCircle,
   FlaskConical,
   FileDown,
+  HeartPulse,
 } from "lucide-react";
 import { AppSelect } from "@/components/ui/app-select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,11 +26,14 @@ import { DiseasesTableSkeleton } from "@/components/admin/skeleton-loaders";
 import {
   DiseaseLabResultsEditor,
   DiseaseLabResultsTable,
+  DiseaseNurseChoicesEditor,
   DiseasePharmacyChoicesEditor,
   emptyLabResultRow,
 } from "@/components/admin/disease-lab-results-editor";
 import { DiseasePrintModal } from "@/components/admin/disease-print-modal";
+import { NurseDecoyModal } from "@/components/admin/nurse-decoy-modal";
 import type { DiseaseLabResult } from "@/lib/disease-lab-results";
+import { buildNurseChoiceOptions } from "@/lib/nurse-choices";
 
 interface Disease {
   id: string;
@@ -41,6 +45,8 @@ interface Disease {
   hormoneChoiceLabel?: string | null;
   treatmentChoiceKey?: string | null;
   treatmentChoiceLabel?: string | null;
+  endocrineGland?: string | null;
+  abnormalHormone?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -87,6 +93,8 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
   const [newHormoneLabel, setNewHormoneLabel] = useState("");
   const [newTreatmentKey, setNewTreatmentKey] = useState("");
   const [newTreatmentLabel, setNewTreatmentLabel] = useState("");
+  const [newGland, setNewGland] = useState("");
+  const [newAbnormalHormone, setNewAbnormalHormone] = useState("");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -100,6 +108,8 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
   const [editHormoneLabel, setEditHormoneLabel] = useState("");
   const [editTreatmentKey, setEditTreatmentKey] = useState("");
   const [editTreatmentLabel, setEditTreatmentLabel] = useState("");
+  const [editGland, setEditGland] = useState("");
+  const [editAbnormalHormone, setEditAbnormalHormone] = useState("");
   const [editIsActive, setEditIsActive] = useState(true);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -109,6 +119,16 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
 
   // Print / export state
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showDecoyModal, setShowDecoyModal] = useState(false);
+
+  // ข้อความต่อมไร้ท่อ/ฮอร์โมนที่โรคอื่นใช้อยู่แล้ว ไว้แนะนำตอนกรอก (รายการเริ่มต้นไม่ถูกกรอง)
+  const nurseChoiceSuggestions = useMemo(
+    () => {
+      const options = buildNurseChoiceOptions([...initialDiseases, ...diseases]);
+      return { glands: options.glands, hormones: options.hormones };
+    },
+    [initialDiseases, diseases]
+  );
 
   const resetAddForm = () => {
     setNewCode("");
@@ -119,6 +139,8 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
     setNewHormoneLabel("");
     setNewTreatmentKey("");
     setNewTreatmentLabel("");
+    setNewGland("");
+    setNewAbnormalHormone("");
     setAddError(null);
   };
 
@@ -143,6 +165,8 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
     setEditHormoneLabel(disease.hormoneChoiceLabel || "");
     setEditTreatmentKey(disease.treatmentChoiceKey || "");
     setEditTreatmentLabel(disease.treatmentChoiceLabel || "");
+    setEditGland(disease.endocrineGland || "");
+    setEditAbnormalHormone(disease.abnormalHormone || "");
     setEditIsActive(disease.isActive !== false);
     setEditError(null);
   };
@@ -157,6 +181,8 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
     setEditHormoneLabel("");
     setEditTreatmentKey("");
     setEditTreatmentLabel("");
+    setEditGland("");
+    setEditAbnormalHormone("");
     setEditIsActive(true);
     setEditError(null);
   };
@@ -217,6 +243,8 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
           hormoneChoiceLabel: newHormoneLabel.trim(),
           treatmentChoiceKey: newTreatmentKey.trim(),
           treatmentChoiceLabel: newTreatmentLabel.trim(),
+          endocrineGland: newGland.trim(),
+          abnormalHormone: newAbnormalHormone.trim(),
         }),
       });
 
@@ -262,6 +290,8 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
           hormoneChoiceLabel: editHormoneLabel.trim(),
           treatmentChoiceKey: editTreatmentKey.trim(),
           treatmentChoiceLabel: editTreatmentLabel.trim(),
+          endocrineGland: editGland.trim(),
+          abnormalHormone: editAbnormalHormone.trim(),
           isActive: editIsActive,
         }),
       });
@@ -415,6 +445,15 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
           >
             <FileDown className="h-4 w-4" />
             <span>ส่งออกบัตรโรค PDF</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDecoyModal(true)}
+            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-medium text-slate-700 shadow-xs hover:bg-slate-50 transition-all active:scale-95 cursor-pointer"
+            title="ตัวเลือกต่อมไร้ท่อ/ฮอร์โมนที่ไม่ใช่คำตอบของโรคใด ไว้หลอกในสถานีพยาบาล"
+          >
+            <HeartPulse className="h-4 w-4" />
+            <span>ตัวลวงสถานีพยาบาล</span>
           </button>
           <button
             type="button"
@@ -887,6 +926,29 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  เฉลยสถานีพยาบาล
+                </label>
+                <p className="text-[10px] text-slate-400 mb-2">
+                  ต่อมไร้ท่อและฮอร์โมนที่ผิดปกติของโรคนี้ · ถูกข้อละ 1 คะแนน (เต็ม 2)
+                  · หลายโรคใช้ข้อความเดียวกันได้ ให้เลือกจากรายการแนะนำเพื่อไม่ให้ตัวเลือกซ้ำ
+                  · เว้นว่างได้ถ้าโรคนี้ยังไม่ใช้ในสถานีพยาบาล
+                </p>
+                <DiseaseNurseChoicesEditor
+                  namePrefix="disease"
+                  gland={newGland}
+                  hormone={newAbnormalHormone}
+                  glandSuggestions={nurseChoiceSuggestions.glands}
+                  hormoneSuggestions={nurseChoiceSuggestions.hormones}
+                  disabled={adding}
+                  onChange={(field, value) => {
+                    if (field === "gland") setNewGland(value);
+                    else setNewAbnormalHormone(value);
+                  }}
+                />
+              </div>
+
               <div className="mt-6 flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
@@ -1030,6 +1092,29 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  เฉลยสถานีพยาบาล
+                </label>
+                <p className="text-[10px] text-slate-400 mb-2">
+                  ต่อมไร้ท่อและฮอร์โมนที่ผิดปกติของโรคนี้ · ถูกข้อละ 1 คะแนน (เต็ม 2)
+                  · หลายโรคใช้ข้อความเดียวกันได้ ให้เลือกจากรายการแนะนำเพื่อไม่ให้ตัวเลือกซ้ำ
+                  · เว้นว่างได้ถ้าโรคนี้ยังไม่ใช้ในสถานีพยาบาล
+                </p>
+                <DiseaseNurseChoicesEditor
+                  namePrefix="edit_disease"
+                  gland={editGland}
+                  hormone={editAbnormalHormone}
+                  glandSuggestions={nurseChoiceSuggestions.glands}
+                  hormoneSuggestions={nurseChoiceSuggestions.hormones}
+                  disabled={savingEdit}
+                  onChange={(field, value) => {
+                    if (field === "gland") setEditGland(value);
+                    else setEditAbnormalHormone(value);
+                  }}
+                />
+              </div>
+
               <div className="pt-1">
                 <label className="block text-xs font-semibold text-slate-700 mb-2">
                   สถานะการใช้งาน
@@ -1092,6 +1177,8 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
       )}
 
       {/* Print / PDF Modal */}
+      {showDecoyModal && <NurseDecoyModal onClose={() => setShowDecoyModal(false)} />}
+
       {showPrintModal && (
         <DiseasePrintModal
           diseases={filteredDiseases}
@@ -1127,6 +1214,25 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
             <div className="mt-4">
               <DiseaseLabResultsTable rows={labRowsOf(diseaseToView)} />
             </div>
+
+            {/* เฉลยของสถานีพยาบาล — เห็นเฉพาะครู ไม่ถูกพิมพ์ลงบัตรผู้ป่วย */}
+            {(diseaseToView.endocrineGland || diseaseToView.abnormalHormone) && (
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+                  เฉลยสถานีพยาบาล
+                </p>
+                <div className="grid gap-2 text-xs sm:grid-cols-2">
+                  <div className="rounded-lg bg-white p-2.5">
+                    <span className="mb-0.5 block text-[10px] font-semibold text-slate-500">ต่อมไร้ท่อที่ผิดปกติ</span>
+                    <span className="font-medium text-slate-800">{diseaseToView.endocrineGland || "—"}</span>
+                  </div>
+                  <div className="rounded-lg bg-white p-2.5">
+                    <span className="mb-0.5 block text-[10px] font-semibold text-slate-500">ฮอร์โมนที่ผิดปกติ</span>
+                    <span className="font-medium text-slate-800">{diseaseToView.abnormalHormone || "—"}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* เฉลยของสถานีห้องยา — เห็นเฉพาะครู ไม่ถูกพิมพ์ลงบัตรผู้ป่วย */}
             {diseaseToView.hormoneChoiceKey && diseaseToView.treatmentChoiceKey && (

@@ -122,6 +122,9 @@ model Disease {
   hormoneChoiceLabel   String?
   treatmentChoiceKey   String?      @db.VarChar(8)
   treatmentChoiceLabel String?      @db.Text
+  // เฉลยของสถานีพยาบาล: ต่อมไร้ท่อและฮอร์โมนที่ผิดปกติ (หลายโรคใช้ข้อความเดียวกันได้)
+  endocrineGland  String?
+  abnormalHormone String?
   isActive        Boolean           @default(true)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
@@ -132,6 +135,22 @@ model Disease {
   @@index([name])
   @@index([isActive])
   @@index([createdAt])
+}
+
+enum NurseChoiceKind {
+  GLAND
+  HORMONE
+}
+
+/// ตัวลวงของสถานีพยาบาล: ตัวเลือกต่อมไร้ท่อ/ฮอร์โมนที่ไม่ใช่คำตอบของโรคใดเลย
+/// ตัวเลือกที่นักเรียนเห็น = เฉลยของทุกโรค + ตัวลวงเหล่านี้ (เรียงตามตัวอักษร)
+model NurseChoiceDecoy {
+  id        String              @id @default(cuid())
+  kind      NurseChoiceKind
+  label     String
+  createdAt DateTime            @default(now())
+
+  @@unique([kind, label])
 }
 
 model Classroom {
@@ -262,6 +281,12 @@ model NurseInterview {
   chiefComplaint        String?           @db.Text
   symptomDescription    String            @db.Text
   notes                 String?           @db.Text
+  // คำตอบของพยาบาลจากตัวเลือกที่ผูกกับโรค และผลการให้คะแนน (ต่อมไร้ท่อ 1 + ฮอร์โมน 1 = เต็ม 2)
+  endocrineGlandChoice  String?
+  abnormalHormoneChoice String?
+  isGlandCorrect        Boolean?
+  isHormoneCorrect      Boolean?
+  evaluationScore       Int?
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
   patientCard           PatientCard?      @relation(fields: [patientCardId], references: [id], onDelete: SetNull)

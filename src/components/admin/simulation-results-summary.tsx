@@ -1,7 +1,7 @@
-import { Crown, DoorOpen, FlaskConical, Medal, Pill, Stethoscope, Trophy, type LucideIcon } from "lucide-react";
+import { Crown, DoorOpen, FlaskConical, HeartPulse, Medal, Pill, Stethoscope, Trophy, type LucideIcon } from "lucide-react";
 import { RANK_BADGES, type GroupResults } from "@/components/projector/results-summary";
 
-type RoleKey = "doctor" | "lab" | "pharmacy";
+type RoleKey = "nurse" | "doctor" | "lab" | "pharmacy";
 
 interface RoleMetric {
   key: RoleKey;
@@ -14,6 +14,7 @@ interface RoleMetric {
 }
 
 const ROLE_METRICS: RoleMetric[] = [
+  { key: "nurse", label: "พยาบาล", correctLabel: "ถูกครบ", wrongLabel: "ไม่ครบ", icon: HeartPulse, bar: "bg-emerald-500", tint: "bg-emerald-50 text-emerald-600" },
   { key: "doctor", label: "แพทย์", correctLabel: "ถูก", wrongLabel: "ผิด", icon: Stethoscope, bar: "bg-sky-500", tint: "bg-sky-50 text-sky-600" },
   { key: "lab", label: "เทคนิคการแพทย์", correctLabel: "ถูก", wrongLabel: "ผิด", icon: FlaskConical, bar: "bg-indigo-500", tint: "bg-indigo-50 text-indigo-600" },
   { key: "pharmacy", label: "เภสัชกร", correctLabel: "ถูกครบ", wrongLabel: "ไม่ครบ", icon: Pill, bar: "bg-fuchsia-500", tint: "bg-fuchsia-50 text-fuchsia-600" },
@@ -27,6 +28,7 @@ interface RoleStat {
 
 function getRoleStat(results: GroupResults | null, key: RoleKey): RoleStat {
   if (!results) return { score: 0, correct: 0, wrong: 0 };
+  if (key === "nurse") return { score: results.nurseScore, correct: results.nurseCorrectCount, wrong: results.nurseWrongCount };
   if (key === "doctor") return { score: results.doctorScore, correct: results.correctCount, wrong: results.wrongCount };
   if (key === "lab") return { score: results.labScore, correct: results.labCorrectCount, wrong: results.labWrongCount };
   return { score: results.pharmacyScore, correct: results.pharmacyCorrectCount, wrong: results.pharmacyWrongCount };
@@ -204,7 +206,7 @@ export function SimulationResultsSummary({
         </div>
       </div>
 
-      <div className="mt-3 grid gap-3 @md:grid-cols-3">
+      <div className="mt-3 grid gap-3 @md:grid-cols-2 @3xl:grid-cols-4">
         {roleTotals.map(({ metric, score, correct, wrong }) => {
           const Icon = metric.icon;
           const accuracy = getAccuracy(correct, wrong);

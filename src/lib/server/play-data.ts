@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { parseLabResults } from "@/lib/disease-lab-results";
+import { buildNurseChoiceOptions } from "@/lib/nurse-choices";
 import { buildPharmacyChoiceOptions } from "@/lib/pharmacy-choices";
 import { formatGroupNameForDisplay } from "@/lib/simulation-groups";
 
@@ -259,6 +260,36 @@ export async function getLabPanels() {
   }
 
   return panels;
+}
+
+/** ตัวลวงของสถานีพยาบาล (ตัวเลือกที่ไม่ใช่คำตอบของโรคใดเลย) แยกตามต่อมไร้ท่อ/ฮอร์โมน */
+export async function getNurseChoiceDecoys() {
+  const rows = await prisma.nurseChoiceDecoy.findMany({
+    select: { kind: true, label: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  return {
+    glands: rows.filter((row) => row.kind === "GLAND").map((row) => row.label),
+    hormones: rows.filter((row) => row.kind === "HORMONE").map((row) => row.label),
+  };
+}
+
+/**
+ * ตัวเลือกต่อมไร้ท่อและฮอร์โมนที่ผิดปกติของสถานีพยาบาล
+ * = เฉลยของทุกโรคที่เปิดใช้งาน + ตัวลวง ตัดข้อความซ้ำ (หลายโรคใช้ตัวเลือกเดียวกันได้)
+ * และเรียงตามตัวอักษรเพื่อไม่ให้ลำดับบอกใบ้ว่าตัวไหนเป็นคำตอบ
+ */
+export async function getNurseChoiceOptions() {
+  const [diseases, decoys] = await Promise.all([
+    prisma.disease.findMany({
+      where: { isActive: true },
+      select: { endocrineGland: true, abnormalHormone: true },
+    }),
+    getNurseChoiceDecoys(),
+  ]);
+
+  return buildNurseChoiceOptions(diseases, decoys);
 }
 
 /**

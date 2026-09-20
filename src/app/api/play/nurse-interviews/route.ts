@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
+  buildNurseChoiceOptions,
+  evaluateNurseChoice,
+  findChoiceOption,
+} from "@/lib/nurse-choices";
+import {
   getAvailableNurseInterviews,
+  getNurseChoiceDecoys,
   getNurseInterviewsAwaitingLab,
 } from "@/lib/server/play-data";
 import {
@@ -119,7 +125,7 @@ export async function POST(request: NextRequest) {
     }
     const pulseBpm = requiredNumber(body.pulseBpm, "ชีพจร", 20, 250, true);
 
-    const [nurse, classroom, group, patientCard, simulation] = await Promise.all([
+    const [nurse, classroom, group, patientCard, simulation, choiceDiseases, decoys] = await Promise.all([
       prisma.user.findFirst({
         where: { id: nurseId, role: "STUDENT", isActive: true },
         select: { id: true, name: true },
@@ -159,6 +165,12 @@ export async function POST(request: NextRequest) {
         groupId,
         role: "nurse",
       }),
+      // เฉลยของสถานีพยาบาลผูกอยู่กับตัวโรค ส่วนตัวลวงเก็บแยก ตัวเลือกที่ยอมรับ = เฉลย + ตัวลวง
+      prisma.disease.findMany({
+        where: { isActive: true },
+        select: { code: true, endocrineGland: true, abnormalHormone: true },
+      }),
+      getNurseChoiceDecoys(),
     ]);
 
     if (!nurse || !classroom || !group || !simulation) {
@@ -178,6 +190,44 @@ export async function POST(request: NextRequest) {
     if (!symptomDescription) {
       return jsonError("ไม่พบอาการของโรคในบัตรผู้ป่วย กรุณาให้ห้องบัตรเลือกโรคใหม่", 409);
     }
+
+    // ตัวเลือกต่อมไร้ท่อ/ฮอร์โมนเป็นข้อความ และเป็นคำตอบของหลายโรคได้ จึงเทียบด้วยข้อความ
+    // ถ้าครูยังไม่ได้กรอกตัวเลือกให้โรคใดเลย จะไม่บังคับตอบ เพื่อไม่ให้การซักประวัติทั้งสถานีค้าง
+    const { glands, hormones } = buildNurseChoiceOptions(choiceDiseases, decoys);
+    const choicesRequired = glands.length > 0 && hormones.length > 0;
+    let glandChoice: string | null = null;
+    let hormoneChoice: string | null = null;
+    if (choicesRequired) {
+      glandChoice = findChoiceOption(glands, body.endocrineGlandChoice);
+      if (!glandChoice) {
+        return jsonError(
+          typeof body.endocrineGlandChoice === "string" && body.endocrineGlandChoice.trim()
+            ? "ไม่พบตัวเลือกต่อมไร้ท่อที่เลือก กรุณาเลือกใหม่"
+            : "กรุณาเลือกต่อมไร้ท่อที่ผิดปกติ",
+          400
+        );
+      }
+      hormoneChoice = findChoiceOption(hormones, body.abnormalHormoneChoice);
+      if (!hormoneChoice) {
+        return jsonError(
+          typeof body.abnormalHormoneChoice === "string" && body.abnormalHormoneChoice.trim()
+            ? "ไม่พบตัวเลือกฮอร์โมนที่เลือก กรุณาเลือกใหม่"
+            : "กรุณาเลือกฮอร์โมนที่ผิดปกติ",
+          400
+        );
+      }
+    }
+
+    // ให้คะแนนเทียบกับเฉลยของโรคที่ห้องบัตรกำหนดไว้ในบัตรผู้ป่วย
+    const expectedDisease = choiceDiseases.find((item) => item.code === patientCard.diseaseCode);
+    const evaluation = evaluateNurseChoice({
+      answer: {
+        gland: expectedDisease?.endocrineGland ?? null,
+        hormone: expectedDisease?.abnormalHormone ?? null,
+      },
+      gland: glandChoice,
+      hormone: hormoneChoice,
+    });
 
     const interview = await prisma.nurseInterview.create({
       data: {
@@ -203,6 +253,11 @@ export async function POST(request: NextRequest) {
         chiefComplaint: symptomDescription,
         symptomDescription,
         notes: null,
+        endocrineGlandChoice: glandChoice,
+        abnormalHormoneChoice: hormoneChoice,
+        isGlandCorrect: evaluation.isGlandCorrect,
+        isHormoneCorrect: evaluation.isHormoneCorrect,
+        evaluationScore: evaluation.score,
         patientCard: { connect: { id: patientCard.id } },
         nurse: { connect: { id: nurse.id } },
         classroom: { connect: { id: classroom.id } },

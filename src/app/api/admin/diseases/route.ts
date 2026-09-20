@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { authorizeAdminRequest } from "@/lib/server/admin-api";
 import { normalizeLabResultsInput, parseLabResults } from "@/lib/disease-lab-results";
+import { normalizeNurseChoiceInput } from "@/lib/nurse-choices";
 import {
   PHARMACY_HORMONE_LABEL_MAX_LENGTH,
   PHARMACY_TREATMENT_LABEL_MAX_LENGTH,
@@ -140,7 +141,12 @@ export async function POST(request: NextRequest) {
 
     let choices;
     try {
-      choices = normalizeDiseaseChoices(body);
+      choices = {
+        ...normalizeDiseaseChoices(body),
+        // เฉลยของสถานีพยาบาล เว้นว่างได้ (ข้อความเดียวกันใช้ซ้ำกับหลายโรคได้)
+        endocrineGland: normalizeNurseChoiceInput(body.endocrineGland, "ต่อมไร้ท่อที่ผิดปกติ"),
+        abnormalHormone: normalizeNurseChoiceInput(body.abnormalHormone, "ฮอร์โมนที่ผิดปกติ"),
+      };
     } catch (error) {
       return NextResponse.json(
         {

@@ -8,6 +8,7 @@ import {
   ClipboardList,
   HeartPulse,
   IdCard,
+  Info,
   RefreshCw,
   RotateCcw,
   Save,
@@ -17,6 +18,7 @@ import {
 import { AppSelect } from "@/components/ui/app-select";
 import { playClick, playSuccess } from "@/lib/play/sound";
 import { formatPatientCode } from "@/lib/patient-code";
+import { NURSE_MAX_SCORE } from "@/lib/nurse-choices";
 
 interface NurseInterviewFormProps {
   nurse: { id: string; name: string; studentId: string | null };
@@ -24,6 +26,10 @@ interface NurseInterviewFormProps {
   group: { id: string; name: string };
   simulationId: string;
   initialPatientCards: PatientCardOption[];
+  /** ตัวเลือกต่อมไร้ท่อที่ผิดปกติ (รวมจากเฉลยของทุกโรค ไม่ซ้ำกัน) */
+  glandOptions: string[];
+  /** ตัวเลือกฮอร์โมนที่ผิดปกติ (รวมจากเฉลยของทุกโรค ไม่ซ้ำกัน) */
+  hormoneOptions: string[];
 }
 
 interface PatientCardOption {
@@ -88,13 +94,19 @@ export function NurseInterviewForm({
   group,
   simulationId,
   initialPatientCards,
+  glandOptions,
+  hormoneOptions,
 }: NurseInterviewFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
   const [patientCards, setPatientCards] = useState(initialPatientCards);
   const [selectedPatientCardId, setSelectedPatientCardId] = useState("");
   const [refreshingCards, setRefreshingCards] = useState(false);
+  const [glandChoice, setGlandChoice] = useState("");
+  const [hormoneChoice, setHormoneChoice] = useState("");
   const selectedPatientCard = patientCards.find((card) => card.id === selectedPatientCardId);
+  // ครูยังไม่ได้กรอกตัวเลือกให้โรคใดเลย: ไม่บังคับตอบ เพื่อไม่ให้การซักประวัติค้างทั้งสถานี
+  const choicesAvailable = glandOptions.length > 0 && hormoneOptions.length > 0;
 
   async function refreshPatientCards() {
     setRefreshingCards(true);
@@ -110,6 +122,8 @@ export function NurseInterviewForm({
       setPatientCards(result.data);
       if (!result.data.some((card: PatientCardOption) => card.id === selectedPatientCardId)) {
         setSelectedPatientCardId("");
+        setGlandChoice("");
+        setHormoneChoice("");
       }
       setSaveState({ status: "idle" });
     } catch (error) {
@@ -134,6 +148,16 @@ export function NurseInterviewForm({
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    if (choicesAvailable && !glandChoice) {
+      setSaveState({ status: "error", message: "กรุณาเลือกต่อมไร้ท่อที่ผิดปกติ" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (choicesAvailable && !hormoneChoice) {
+      setSaveState({ status: "error", message: "กรุณาเลือกฮอร์โมนที่ผิดปกติ" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setSaveState({ status: "saving" });
 
     const formData = new FormData(event.currentTarget);
@@ -148,6 +172,8 @@ export function NurseInterviewForm({
       systolicBp: formData.get("systolicBp"),
       diastolicBp: formData.get("diastolicBp"),
       pulseBpm: formData.get("pulseBpm"),
+      endocrineGlandChoice: glandChoice,
+      abnormalHormoneChoice: hormoneChoice,
     };
 
     try {
@@ -166,6 +192,8 @@ export function NurseInterviewForm({
       formRef.current?.reset();
       setPatientCards((cards) => cards.filter((card) => card.id !== selectedPatientCardId));
       setSelectedPatientCardId("");
+      setGlandChoice("");
+      setHormoneChoice("");
       setSaveState({
         status: "success",
         recordId: result.data.id,
@@ -184,6 +212,8 @@ export function NurseInterviewForm({
     playClick();
     formRef.current?.reset();
     setSelectedPatientCardId("");
+    setGlandChoice("");
+    setHormoneChoice("");
     setSaveState({ status: "idle" });
   }
 
@@ -388,6 +418,58 @@ export function NurseInterviewForm({
           </div>
         </section>
 
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-md sm:p-7">
+          <SectionHeading
+            icon={Stethoscope}
+            number="4"
+            title={`วิเคราะห์ความผิดปกติ (${NURSE_MAX_SCORE} คะแนน)`}
+            description="อ่านอาการของผู้ป่วยแล้วเลือกต่อมไร้ท่อและฮอร์โมนที่น่าจะผิดปกติ · ถูกข้อละ 1 คะแนน"
+          />
+
+          {choicesAvailable ? (
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <AppSelect
+                  isRequired
+                  fullWidth
+                  tone="emerald"
+                  label="ต่อมไร้ท่อที่ผิดปกติ"
+                  placeholder="เลือกต่อมไร้ท่อ"
+                  options={glandOptions.map((option) => ({ value: option, label: option }))}
+                  value={glandChoice}
+                  onChange={(value) => {
+                    setGlandChoice(value);
+                    setSaveState({ status: "idle" });
+                  }}
+                />
+                <AppSelect
+                  isRequired
+                  fullWidth
+                  tone="emerald"
+                  label="ฮอร์โมนที่ผิดปกติ"
+                  placeholder="เลือกฮอร์โมน"
+                  options={hormoneOptions.map((option) => ({ value: option, label: option }))}
+                  value={hormoneChoice}
+                  onChange={(value) => {
+                    setHormoneChoice(value);
+                    setSaveState({ status: "idle" });
+                  }}
+                />
+              </div>
+              <p className="flex items-start gap-2 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/60 p-3 text-sm font-medium text-slate-600">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                ตัวเลือกเดียวเป็นคำตอบของหลายโรคได้ (เช่น หลายโรคเกิดจากต่อมเดียวกัน) ให้เลือกจากอาการของผู้ป่วยรายนี้
+              </p>
+            </div>
+          ) : (
+            <p className="flex items-start gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              ยังไม่มีตัวเลือกต่อมไร้ท่อ/ฮอร์โมนในระบบ ให้คุณครูกรอกเฉลยของแต่ละโรคที่หน้าจัดการข้อมูลโรคก่อน
+              (ตอนนี้ข้ามส่วนนี้ได้)
+            </p>
+          )}
+        </section>
+
         {/* Reserve space so the sticky action bar below never overlaps this content */}
         <div aria-hidden="true" className="h-36 sm:h-20" />
 
@@ -414,7 +496,7 @@ export function NurseInterviewForm({
             ) : (
               <>
                 <Save className="h-4 w-4" />
-                บันทึกสัญญาณชีพและส่งต่อ
+                บันทึกสัญญาณชีพ คำตอบ และส่งต่อ
               </>
             )}
           </button>

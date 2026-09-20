@@ -18,6 +18,7 @@ import {
   Square,
   Sun,
   Stethoscope,
+  X,
 } from "lucide-react";
 import { getPlayRole, type PlayRole, type PlayRoleId } from "@/lib/play/roles";
 import { RoomQrCode } from "@/components/play/room-qr-code";
@@ -170,6 +171,7 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
   const [showGroups, setShowGroups] = useState(false);
+  const [joinQrOpen, setJoinQrOpen] = useState(false);
   const theme = useSyncExternalStore(
     subscribeToProjectorTheme,
     getStoredProjectorTheme,
@@ -225,6 +227,17 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
     document.addEventListener("fullscreenchange", syncFullscreenState);
     return () => document.removeEventListener("fullscreenchange", syncFullscreenState);
   }, []);
+
+  useEffect(() => {
+    if (!joinQrOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setJoinQrOpen(false);
+    };
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [joinQrOpen]);
 
   useEffect(() => {
     startMusic();
@@ -364,6 +377,9 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
           pharmacyCorrectCount: group.results?.pharmacyCorrectCount ?? 0,
           pharmacyWrongCount: group.results?.pharmacyWrongCount ?? 0,
           pharmacyScore: group.results?.pharmacyScore ?? 0,
+          nurseCorrectCount: group.results?.nurseCorrectCount ?? 0,
+          nurseWrongCount: group.results?.nurseWrongCount ?? 0,
+          nurseScore: group.results?.nurseScore ?? 0,
           accentBadge: GROUP_ACCENTS[groupIndex % GROUP_ACCENTS.length].badge,
         }))
         .sort((a, b) => b.score - a.score)
@@ -406,9 +422,47 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
             <div className={`flex items-center gap-4 rounded-2xl border px-4 py-3 ${themeStyles.control}`}>
               <DoorOpen className="h-5 w-5 text-amber-300" />
               <div><p className={`text-xs font-bold ${themeStyles.secondary}`}>ห้องจำลอง</p><p className="font-mono text-xl font-black tracking-[0.16em]">{snapshot.roomCode}</p></div>
+              {!isLobby && !isEnded && (
+                <button
+                  type="button"
+                  onClick={() => setJoinQrOpen(true)}
+                  aria-label="ขยาย QR Code สำหรับเข้าห้อง"
+                  title="สแกนเพื่อเข้าห้อง · กดเพื่อขยาย"
+                  className="rounded-2xl transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 active:scale-[0.98]"
+                >
+                  <RoomQrCode roomCode={snapshot.roomCode} size={84} />
+                </button>
+              )}
             </div>
           </div>
         </header>
+        {joinQrOpen && !isLobby && !isEnded && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`QR Code สำหรับเข้าห้อง ${snapshot.roomCode}`}
+            onClick={() => setJoinQrOpen(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-6 backdrop-blur-sm"
+          >
+            <div onClick={(event) => event.stopPropagation()} className="relative flex max-h-full flex-col items-center gap-5 overflow-auto rounded-[2rem] bg-gradient-to-br from-rose-600 via-red-600 to-orange-500 p-8 text-center text-white shadow-2xl shadow-red-950/40">
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setJoinQrOpen(false)}
+                aria-label="ปิด QR Code"
+                className="absolute right-4 top-4 rounded-full bg-white/15 p-2 transition hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-white/75">สแกน QR เพื่อเข้าห้อง</p>
+              <RoomQrCode roomCode={snapshot.roomCode} size={360} />
+              <div>
+                <p className="text-xs font-bold text-white/70">หรือกรอกเลขห้อง</p>
+                <p className="mt-1 font-mono text-5xl font-black tracking-[0.16em]">{snapshot.roomCode}</p>
+              </div>
+            </div>
+          </div>
+        )}
         {fullscreenError && <p role="alert" className={`mt-3 text-right text-xs font-semibold ${themeStyles.error}`}>{fullscreenError}</p>}
 
         {isLobby ? (
