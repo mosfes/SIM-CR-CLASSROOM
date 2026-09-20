@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Label, ListBox, Select } from "@heroui/react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -74,9 +75,81 @@ type SaveState =
 const fieldClass =
   "mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-base font-medium text-slate-900 outline-none transition placeholder:text-slate-300 hover:border-fuchsia-300 focus:border-fuchsia-500 focus:ring-4 focus:ring-fuchsia-100";
 
-/** ตัวเลือกบางข้อยาวมาก ตัดให้พอดีบรรทัดใน dropdown แล้วค่อยแสดงเต็มในการ์ดด้านล่าง */
-function truncate(text: string, maxLength = 72) {
-  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+function ChoiceBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md bg-fuchsia-100 px-1.5 text-xs font-black text-fuchsia-700">
+      {children}
+    </span>
+  );
+}
+
+/**
+ * dropdown เลือกตัวเลือกตามใบงาน (A-U / ก-ธ) ใช้ HeroUI Select
+ * ตัวเลือกบางข้อยาวมาก จึงจำกัดไว้ 2 บรรทัดใน dropdown แล้วค่อยแสดงเต็มในการ์ดใต้ช่องเลือก
+ */
+function ChoiceSelect({
+  label,
+  placeholder,
+  emptyText,
+  options,
+  value,
+  onChange,
+  isDisabled,
+}: {
+  label: string;
+  placeholder: string;
+  emptyText: string;
+  options: PharmacyChoiceOption[];
+  value: string;
+  onChange: (key: string) => void;
+  isDisabled: boolean;
+}) {
+  const selected = options.find((option) => option.key === value);
+
+  return (
+    <Select
+      isRequired
+      fullWidth
+      isDisabled={isDisabled}
+      placeholder={options.length === 0 ? emptyText : placeholder}
+      value={value || null}
+      onChange={(key) => onChange(key ? String(key) : "")}
+    >
+      <Label className="text-sm font-bold text-slate-700">{label}</Label>
+      <Select.Trigger className="mt-0.5 h-11 rounded-xl border border-slate-200 bg-white px-3.5 shadow-none hover:border-fuchsia-300 hover:bg-white data-[focus-visible=true]:border-fuchsia-500 data-[focus-visible=true]:bg-white data-[focus-visible=true]:ring-4 data-[focus-visible=true]:ring-fuchsia-100 aria-expanded:border-fuchsia-500 aria-expanded:ring-4 aria-expanded:ring-fuchsia-100">
+        <Select.Value className="flex min-w-0 items-center text-base font-medium text-slate-900">
+          {({ defaultChildren, isPlaceholder }) => {
+            if (isPlaceholder || !selected) return defaultChildren;
+            return (
+              <span className="flex min-w-0 items-center gap-2.5">
+                <ChoiceBadge>{selected.key}</ChoiceBadge>
+                <span className="truncate">{selected.label}</span>
+              </span>
+            );
+          }}
+        </Select.Value>
+        <Select.Indicator />
+      </Select.Trigger>
+      <Select.Popover className="rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
+        <ListBox>
+          {options.map((option) => (
+            <ListBox.Item
+              key={option.key}
+              id={option.key}
+              textValue={`${option.key}. ${option.label}`}
+              className="rounded-xl py-2 hover:bg-fuchsia-50 data-[focused=true]:bg-fuchsia-50 data-[selected=true]:bg-fuchsia-100/70"
+            >
+              <ChoiceBadge>{option.key}</ChoiceBadge>
+              <span className="line-clamp-2 min-w-0 flex-1 text-base font-medium leading-snug text-slate-800">
+                {option.label}
+              </span>
+              <ListBox.ItemIndicator className="text-fuchsia-600" />
+            </ListBox.Item>
+          ))}
+        </ListBox>
+      </Select.Popover>
+    </Select>
+  );
 }
 
 function FieldLabel({ children, required = false }: { children: React.ReactNode; required?: boolean }) {
@@ -518,28 +591,18 @@ export function PharmacistDispenseForm({
 
           <div className="space-y-4">
             <div>
-              <label className="block">
-                <FieldLabel required>ความผิดปกติของฮอร์โมน (A-U)</FieldLabel>
-                <select
-                  required
-                  value={hormoneChoiceKey}
-                  onChange={(event) => {
-                    setHormoneChoiceKey(event.target.value);
-                    setSaveState({ status: "idle" });
-                  }}
-                  disabled={!selectedDiagnosisId || hormoneOptions.length === 0}
-                  className={fieldClass}
-                >
-                  <option value="" disabled>
-                    {hormoneOptions.length === 0 ? "ยังไม่มีตัวเลือกในระบบ" : "เลือกตัวเลือก A-U"}
-                  </option>
-                  {hormoneOptions.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.key}. {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <ChoiceSelect
+                label="ความผิดปกติของฮอร์โมน (A-U)"
+                placeholder="เลือกตัวเลือก A-U"
+                emptyText="ยังไม่มีตัวเลือกในระบบ"
+                options={hormoneOptions}
+                value={hormoneChoiceKey}
+                onChange={(key) => {
+                  setHormoneChoiceKey(key);
+                  setSaveState({ status: "idle" });
+                }}
+                isDisabled={!selectedDiagnosisId || hormoneOptions.length === 0}
+              />
               {selectedHormone && (
                 <div className="mt-2 flex items-start gap-2.5 rounded-xl border border-fuchsia-200 bg-fuchsia-50/70 p-3">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-fuchsia-600 text-sm font-black text-white">
@@ -551,28 +614,18 @@ export function PharmacistDispenseForm({
             </div>
 
             <div>
-              <label className="block">
-                <FieldLabel required>ยา/การรักษาที่ควรได้รับ (ก-ธ)</FieldLabel>
-                <select
-                  required
-                  value={treatmentChoiceKey}
-                  onChange={(event) => {
-                    setTreatmentChoiceKey(event.target.value);
-                    setSaveState({ status: "idle" });
-                  }}
-                  disabled={!selectedDiagnosisId || treatmentOptions.length === 0}
-                  className={fieldClass}
-                >
-                  <option value="" disabled>
-                    {treatmentOptions.length === 0 ? "ยังไม่มีตัวเลือกในระบบ" : "เลือกตัวเลือก ก-ธ"}
-                  </option>
-                  {treatmentOptions.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.key}. {truncate(option.label)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <ChoiceSelect
+                label="ยา/การรักษาที่ควรได้รับ (ก-ธ)"
+                placeholder="เลือกตัวเลือก ก-ธ"
+                emptyText="ยังไม่มีตัวเลือกในระบบ"
+                options={treatmentOptions}
+                value={treatmentChoiceKey}
+                onChange={(key) => {
+                  setTreatmentChoiceKey(key);
+                  setSaveState({ status: "idle" });
+                }}
+                isDisabled={!selectedDiagnosisId || treatmentOptions.length === 0}
+              />
               {selectedTreatment && (
                 <div className="mt-2 flex items-start gap-2.5 rounded-xl border border-fuchsia-200 bg-fuchsia-50/70 p-3">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-fuchsia-600 text-sm font-black text-white">
