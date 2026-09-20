@@ -27,7 +27,5 @@ export function GameSoundStarter() {
     };
   }, []);
 
-  return (
-    <SoundToggle className="group relative flex h-10 w-10 items-center justify-center rounded-xl border border-white/30 bg-white/20 text-white shadow-xs backdrop-blur-md transition-all hover:bg-white/30 hover:border-white/40 active:scale-95 cursor-pointer" />
-  );
+  return <SoundToggle />;
 }

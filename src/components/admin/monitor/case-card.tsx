@@ -15,10 +15,10 @@ import {
   XCircle,
 } from "lucide-react";
 import { formatPatientCode } from "@/lib/patient-code";
+import { StageChip } from "./stage-chip";
 import {
   SCORE_MAXIMUMS,
   STAGE_CURRENT_STATION,
-  STAGE_TONE,
   STATIONS,
   TONES,
   formatTime,
@@ -43,40 +43,20 @@ function correctnessText(ok: boolean | null | undefined) {
 function ScorePill({
   score,
   maximum,
+  correct,
   icon,
 }: {
   score: number | null | undefined;
   maximum: number;
+  correct?: boolean | null;
   icon?: ReactNode;
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-black tabular-nums ${scoreClasses(score, maximum)}`}
+      className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-black tabular-nums ${scoreClasses(score, maximum, correct)}`}
     >
       {icon}
       {typeof score === "number" ? score : "—"}/{maximum}
-    </span>
-  );
-}
-
-function StageChip({ sub }: { sub: SubmissionListItem }) {
-  const tone = TONES[STAGE_TONE[sub.stage]];
-  const live = sub.stage !== "COMPLETED";
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${tone.soft}`}
-    >
-      {sub.stage === "COMPLETED" ? (
-        <CheckCircle2 className="h-3 w-3" />
-      ) : (
-        <span className="relative flex h-1.5 w-1.5">
-          {live && (
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-60" />
-          )}
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-current" />
-        </span>
-      )}
-      {sub.stageLabel}
     </span>
   );
 }
@@ -211,7 +191,11 @@ function StepBody({ stationKey, sub }: { stationKey: StationKey; sub: Submission
         </p>
         <span className="flex flex-wrap items-center gap-1">
           {lab.evaluationScore !== null && (
-            <ScorePill score={lab.evaluationScore} maximum={SCORE_MAXIMUMS.medTech} />
+            <ScorePill
+              score={lab.evaluationScore}
+              maximum={SCORE_MAXIMUMS.medTech}
+              correct={lab.isCorrect}
+            />
           )}
           {lab.isCorrect === null ? (
             <span className="text-[11px] font-semibold text-slate-400">ไม่มีเฉลย</span>
@@ -241,6 +225,7 @@ function StepBody({ stationKey, sub }: { stationKey: StationKey; sub: Submission
           <ScorePill
             score={doctor.evaluationScore}
             maximum={SCORE_MAXIMUMS.doctor}
+            correct={doctor.isCorrect}
             icon={<Sparkles className="h-3 w-3" />}
           />
         ) : (
@@ -534,7 +519,7 @@ export function CaseCard({
         <div className="min-w-0 flex-1 basis-56">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
             <h3 className="min-w-0 truncate text-base font-bold text-slate-900">{patient.fullName}</h3>
-            <StageChip sub={sub} />
+            <StageChip stage={sub.stage} label={sub.stageLabel} />
           </div>
           <p className="mt-0.5 text-xs text-slate-500">
             อายุ {patient.age} ปี · เพศ {patient.gender} · สถานภาพ {patient.maritalStatus}

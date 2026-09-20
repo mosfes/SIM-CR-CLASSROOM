@@ -342,9 +342,18 @@ export const STAGE_TONE: Record<SubmissionStage, Tone> = {
   COMPLETED: "slate",
 };
 
-/** สีตามคะแนน: เต็ม = เขียว, 0 = แดง, ระหว่างกลาง = เหลือง, ไม่มีคะแนน = เทา */
-export function scoreClasses(score: number | null | undefined, maximum: number) {
+/**
+ * สีตามคะแนน: ถ้ารู้ผลถูก/ผิดจริงให้ยึดผลนั้นก่อน (เช่น แพทย์วินิจฉัยถูกแต่ได้ 9/10 ก็ยังเป็นสีเขียว)
+ * ไม่รู้ผล = ดูสัดส่วนคะแนน: เต็ม = เขียว, 0 = แดง, ระหว่างกลาง = เหลือง, ไม่มีคะแนน = เทา
+ */
+export function scoreClasses(
+  score: number | null | undefined,
+  maximum: number,
+  correct?: boolean | null
+) {
   if (typeof score !== "number") return "border-slate-200 bg-slate-100 text-slate-500";
+  if (correct === true) return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (correct === false) return "border-rose-200 bg-rose-50 text-rose-700";
   if (score >= maximum) return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (score <= 0) return "border-rose-200 bg-rose-50 text-rose-700";
   return "border-amber-200 bg-amber-50 text-amber-700";

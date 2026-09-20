@@ -1,87 +1,292 @@
 "use client";
 
+import { useEffect, type ReactNode } from "react";
 import {
   AlertCircle,
   CheckCircle2,
-  FlaskConical,
-  HeartPulse,
-  Pill,
+  KeyRound,
   Printer,
   RefreshCw,
   Sparkles,
-  Stethoscope,
   X,
   XCircle,
 } from "lucide-react";
 import { formatPatientCode } from "@/lib/patient-code";
+import { StageChip } from "./stage-chip";
 import {
   SCORE_MAXIMUMS,
+  STATIONS,
+  TONES,
   formatDateTime,
-  formatScore,
+  scoreClasses,
   type MedicineItem,
+  type StationKey,
   type SubmissionItem,
 } from "./shared";
 
-function ScoreSummary({
-  nurseScore,
-  doctorScore,
-  medTechScore,
-  pharmacistScore,
+const STATION_TITLES: Record<StationKey, string> = {
+  card: "ห้องบัตร · ข้อมูลผู้ป่วย",
+  nurse: "พยาบาล · ซักประวัติและสัญญาณชีพ",
+  lab: "เทคนิคการแพทย์ · ผลตรวจห้องปฏิบัติการ",
+  doctor: "แพทย์ · การวินิจฉัยโรค",
+  pharmacy: "เภสัชกร · การจ่ายยา",
+};
+
+// class ต้องเขียนเป็นข้อความเต็มเพื่อให้ Tailwind สแกนเจอ
+function answerCardClasses(correct: boolean | null | undefined) {
+  if (correct === true) return "border-emerald-200 bg-emerald-50/70";
+  if (correct === false) return "border-rose-200 bg-rose-50/70";
+  return "border-slate-200 bg-white";
+}
+
+/** ป้ายผลตรวจคำตอบเทียบเฉลย: ถูกต้อง / ไม่ถูกต้อง / ไม่มีเฉลย */
+function Verdict({
+  correct,
+  labels = ["ถูกต้อง", "ไม่ถูกต้อง", "ไม่มีเฉลย"],
 }: {
-  nurseScore: number | null | undefined;
-  doctorScore: number | null | undefined;
-  medTechScore: number | null | undefined;
-  pharmacistScore: number | null | undefined;
+  correct: boolean | null | undefined;
+  labels?: [string, string, string];
 }) {
-  const scoredParts = [nurseScore, doctorScore, medTechScore, pharmacistScore].filter(
-    (score): score is number => typeof score === "number"
+  if (correct === true) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+        <CheckCircle2 className="h-3 w-3" />
+        {labels[0]}
+      </span>
+    );
+  }
+  if (correct === false) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-700">
+        <XCircle className="h-3 w-3" />
+        {labels[1]}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
+      {labels[2]}
+    </span>
   );
+}
 
-  if (scoredParts.length === 0) return null;
+function ScoreBadge({
+  score,
+  maximum,
+  correct,
+}: {
+  score: number | null | undefined;
+  maximum: number;
+  correct?: boolean | null;
+}) {
+  if (typeof score !== "number") return null;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 font-mono text-xs font-black tabular-nums ${scoreClasses(score, maximum, correct)}`}
+    >
+      <span className="font-sans text-[11px] font-semibold opacity-80">คะแนน</span>
+      {score}/{maximum}
+    </span>
+  );
+}
 
-  const totalScore = scoredParts.reduce((sum, score) => sum + score, 0);
-  const chipClass = "inline-flex items-center gap-1 rounded-xl border bg-white px-2.5 py-1.5";
+function Stat({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+      <p className="text-[11px] text-slate-400">{label}</p>
+      <p className="mt-0.5 break-words text-sm font-bold text-slate-800">{children}</p>
+    </div>
+  );
+}
+
+/** กล่องคำตอบของนักเรียน พร้อมผลเทียบเฉลย */
+function AnswerCard({
+  heading,
+  correct,
+  badge,
+  children,
+}: {
+  heading: string;
+  correct: boolean | null | undefined;
+  badge?: string | null;
+  children: ReactNode;
+}) {
+  return (
+    <div className={`rounded-xl border p-3 ${answerCardClasses(correct)}`}>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold text-slate-500">{heading}</span>
+        <Verdict correct={correct} />
+      </div>
+      <p className="flex items-start gap-2 text-sm font-semibold leading-snug text-slate-800">
+        {badge && (
+          <span className="mt-px flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md bg-fuchsia-600 px-1 text-[11px] font-black text-white">
+            {badge}
+          </span>
+        )}
+        <span className="min-w-0 break-words">{children}</span>
+      </p>
+    </div>
+  );
+}
+
+function TextBlock({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-slate-400">{label}</p>
+      <p className="mt-0.5 whitespace-pre-line break-words text-sm font-medium leading-relaxed text-slate-800">
+        {children}
+      </p>
+    </div>
+  );
+}
+
+/** สรุปคะแนนรวมและคะแนนแต่ละสถานี — สถานีที่ยังไม่ตรวจแสดง "—" */
+function ScoreSummary({ submission }: { submission: SubmissionItem }) {
+  const { nurse, lab, doctor, pharmacy } = submission;
+  const rows: Array<{
+    key: StationKey;
+    label: string;
+    score: number | null | undefined;
+    maximum: number;
+    correct?: boolean | null;
+  }> = [
+    { key: "nurse", label: "พยาบาล", score: nurse?.evaluationScore, maximum: SCORE_MAXIMUMS.nurse },
+    {
+      key: "lab",
+      label: "เทคนิคการแพทย์",
+      score: lab?.evaluationScore,
+      maximum: SCORE_MAXIMUMS.medTech,
+      correct: lab?.isCorrect,
+    },
+    {
+      key: "doctor",
+      label: "แพทย์",
+      score: doctor?.evaluationScore,
+      maximum: SCORE_MAXIMUMS.doctor,
+      correct: doctor?.isCorrect,
+    },
+    {
+      key: "pharmacy",
+      label: "เภสัชกร",
+      score: pharmacy?.evaluationScore,
+      maximum: SCORE_MAXIMUMS.pharmacist,
+    },
+  ];
+
+  const scored = rows.filter((row): row is typeof row & { score: number } => typeof row.score === "number");
+  if (scored.length === 0) return null;
+
+  const total = scored.reduce((sum, row) => sum + row.score, 0);
+  const percent = Math.min(100, (total / SCORE_MAXIMUMS.total) * 100);
+  const bar = percent >= 70 ? "bg-emerald-500" : percent >= 40 ? "bg-amber-500" : "bg-rose-500";
 
   return (
-    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3" aria-label="สรุปคะแนน">
-      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-800">
-        สรุปคะแนนประเมิน
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`${chipClass} border-emerald-300 text-emerald-800`}>
-          <span>รวมทั้งหมด</span>
-          <strong className="font-mono text-emerald-900">
-            {formatScore(totalScore, SCORE_MAXIMUMS.total)}
-          </strong>
-        </span>
-        <span className={`${chipClass} border-emerald-200 text-emerald-800`}>
-          <span>พยาบาล</span>
-          <strong className="font-mono">{formatScore(nurseScore ?? 0, SCORE_MAXIMUMS.nurse)}</strong>
-        </span>
-        <span className={`${chipClass} border-sky-200 text-sky-800`}>
-          <span>แพทย์</span>
-          <strong className="font-mono">{formatScore(doctorScore, SCORE_MAXIMUMS.doctor)}</strong>
-        </span>
-        <span className={`${chipClass} border-indigo-200 text-indigo-800`}>
-          <span>เทคนิคการแพทย์</span>
-          <strong className="font-mono">
-            {formatScore(medTechScore ?? 0, SCORE_MAXIMUMS.medTech)}
-          </strong>
-        </span>
-        <span className={`${chipClass} border-fuchsia-200 text-fuchsia-800`}>
-          <span>เภสัชกร</span>
-          <strong className="font-mono">
-            {formatScore(pharmacistScore ?? 0, SCORE_MAXIMUMS.pharmacist)}
-          </strong>
-        </span>
+    <div data-pdf-block className="grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="สรุปคะแนนประเมิน">
+      <div className="col-span-2 rounded-2xl border border-slate-200 bg-slate-900 p-3 text-white sm:col-span-1">
+        <p className="text-[11px] font-semibold text-slate-300">คะแนนรวม</p>
+        <p className="mt-0.5 font-mono text-2xl font-black leading-none tabular-nums">
+          {total}
+          <span className="text-sm font-bold text-slate-400">/{SCORE_MAXIMUMS.total}</span>
+        </p>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/20">
+          <div className={`h-full rounded-full ${bar}`} style={{ width: `${percent}%` }} />
+        </div>
       </div>
+      {rows.map((row) => {
+        const station = STATIONS.find((s) => s.key === row.key)!;
+        const Icon = station.icon;
+        return (
+          <div key={row.key} className="rounded-2xl border border-slate-200 bg-white p-3">
+            <p className={`flex items-center gap-1.5 text-[11px] font-semibold ${TONES[station.tone].text}`}>
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{row.label}</span>
+            </p>
+            <p className="mt-1.5">
+              <span
+                className={`inline-flex items-center rounded-md border px-1.5 py-0.5 font-mono text-sm font-black tabular-nums ${scoreClasses(row.score, row.maximum, row.correct)}`}
+              >
+                {typeof row.score === "number" ? row.score : "—"}/{row.maximum}
+              </span>
+            </p>
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+/** หนึ่งสถานีบน timeline: จุดสีบอกความคืบหน้า หัวข้อ ผู้บันทึก เวลา และเนื้อหา */
+function StationSection({
+  stationKey,
+  isLast = false,
+  filled,
+  by,
+  at,
+  badge,
+  emptyText,
+  children,
+}: {
+  stationKey: StationKey;
+  isLast?: boolean;
+  filled: boolean;
+  by?: string;
+  at?: string;
+  badge?: ReactNode;
+  emptyText: string;
+  children?: ReactNode;
+}) {
+  const station = STATIONS.find((s) => s.key === stationKey)!;
+  const tone = TONES[station.tone];
+  const Icon = station.icon;
+  const index = STATIONS.indexOf(station) + 1;
+
+  return (
+    <section data-pdf-block className="relative pl-12">
+      {!isLast && (
+        <span
+          aria-hidden
+          className={`absolute left-[17px] top-10 -bottom-5 w-0.5 rounded-full ${
+            filled ? tone.bar : "bg-slate-200"
+          }`}
+        />
+      )}
+      <span
+        className={`absolute left-0 top-0 flex h-9 w-9 items-center justify-center rounded-full ${
+          filled ? `${tone.solid} shadow-xs` : "bg-slate-100 text-slate-400"
+        }`}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+
+      <header className="flex min-h-9 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <div className="min-w-0">
+          <h4 className={`text-sm font-bold leading-tight ${filled ? tone.text : "text-slate-400"}`}>
+            {index}. {STATION_TITLES[stationKey]}
+          </h4>
+          {filled && by && (
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              โดย <strong className="font-semibold text-slate-700">{by}</strong>
+              {at && <> · {formatDateTime(at)}</>}
+            </p>
+          )}
+        </div>
+        {filled && badge}
+      </header>
+
+      {filled ? (
+        <div className="mt-3 space-y-3">{children}</div>
+      ) : (
+        <p className="mt-2 rounded-xl border border-dashed border-slate-200 px-3 py-3 text-center text-xs italic text-slate-400">
+          {emptyText}
+        </p>
+      )}
+    </section>
   );
 }
 
 /** โมดัลเวชระเบียนฉบับเต็ม — id / data-pdf-* ใช้กับการส่งออก PDF ห้ามเปลี่ยน */
 export function DossierModal({
-  submission: selectedSubmission,
+  submission,
   onClose,
   onExport,
   exportingPdf,
@@ -93,557 +298,377 @@ export function DossierModal({
   exportingPdf: boolean;
   exportError: string | null;
 }) {
+  const { patient, cardRoom, nurse, lab, doctor, pharmacy } = submission;
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  const chronicDisease = !nurse
+    ? ""
+    : nurse.chronicDiseaseStatus === "YES"
+      ? nurse.chronicDiseaseDetails
+      : nurse.chronicDiseaseStatus === "NONE"
+        ? "ไม่มี"
+        : "ไม่ทราบ";
+
+  const medicines = Array.isArray(pharmacy?.medicines) ? (pharmacy.medicines as MedicineItem[]) : [];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200 overflow-y-auto">
-      <div id="printable-medical-record" className="relative my-8 w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
-        {/* Modal Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-slate-100">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-black text-white">
-                รหัสผู้ป่วย {formatPatientCode(selectedSubmission.queueNumber)}
-              </span>
-              <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
-                {selectedSubmission.group.name}
-              </span>
-              <span className="text-xs text-slate-400">
-                ห้องเรียน: {selectedSubmission.classroom.name}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-2 backdrop-blur-xs animate-in fade-in duration-200 sm:p-6"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      {/* โครงแบบ flex (หัว / เนื้อหาเลื่อนได้ / ท้าย) ไม่ใช้ sticky เพื่อให้จับภาพลง PDF ได้ครบ */}
+      <div
+        id="printable-medical-record"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dossier-title"
+        className="relative flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
+      >
+        {/* หัวเวชระเบียน */}
+        <header className="shrink-0 border-b border-slate-100 bg-slate-50/70">
+          <div className="h-1.5 bg-red-600" />
+          <div className="flex items-start gap-3.5 px-4 py-4 sm:gap-4 sm:px-6">
+            <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-red-600 text-white shadow-xs">
+              <span className="text-[10px] font-semibold leading-none opacity-80">รหัส</span>
+              <span className="mt-0.5 text-xl font-black leading-none tabular-nums">
+                {formatPatientCode(submission.queueNumber)}
               </span>
             </div>
-            <h3 className="mt-2 text-xl font-bold text-slate-900">
-              บันทึกเวชระเบียนผู้ป่วย: {selectedSubmission.patient.fullName}
-            </h3>
-          </div>
-          <button
-            type="button"
-            data-pdf-ignore
-            onClick={() => onClose()}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
 
-        <div data-pdf-block className="mt-4">
-          <ScoreSummary
-            nurseScore={selectedSubmission.nurse?.evaluationScore}
-            doctorScore={selectedSubmission.doctor?.evaluationScore}
-            medTechScore={selectedSubmission.lab?.evaluationScore}
-            pharmacistScore={selectedSubmission.pharmacy?.evaluationScore}
-          />
-        </div>
-
-        {/* Modal Content */}
-        <div className="mt-5 space-y-6 text-sm">
-          {/* Patient Basic Profile */}
-          <div data-pdf-block className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
-              ข้อมูลประจำตัวผู้ป่วย (จากห้องบัตร)
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div>
-                <span className="text-slate-400">ชื่อ-นามสกุล:</span>
-                <p className="font-bold text-slate-800">{selectedSubmission.patient.fullName}</p>
-              </div>
-              <div>
-                <span className="text-slate-400">อายุ:</span>
-                <p className="font-bold text-slate-800">{selectedSubmission.patient.age} ปี</p>
-              </div>
-              <div>
-                <span className="text-slate-400">เพศ:</span>
-                <p className="font-bold text-slate-800">{selectedSubmission.patient.gender}</p>
-              </div>
-              <div>
-                <span className="text-slate-400">สถานภาพ:</span>
-                <p className="font-bold text-slate-800">
-                  {selectedSubmission.patient.maritalStatus}
-                </p>
-              </div>
-              <div>
-                <span className="text-slate-400">เจ้าหน้าที่ออกบัตร:</span>
-                <p className="font-bold text-slate-800">
-                  {selectedSubmission.cardRoom.clerkName}
-                </p>
-              </div>
-              <div>
-                <span className="text-slate-400">เวลาออกบัตร:</span>
-                <p className="font-bold text-slate-800">
-                  {formatDateTime(selectedSubmission.cardRoom.createdAt)}
-                </p>
-              </div>
-              <div className="col-span-2 rounded-xl bg-amber-100/70 p-2 border border-amber-200">
-                <span className="text-[11px] font-bold text-amber-800">
-                  เฉลยรหัสโรคที่ห้องบัตรตั้งไว้:
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold text-slate-400">บันทึกเวชระเบียนผู้ป่วย</p>
+              <h3 id="dossier-title" className="break-words text-xl font-bold leading-snug text-slate-900">
+                {patient.fullName}
+              </h3>
+              <p className="mt-0.5 text-xs text-slate-500">
+                อายุ {patient.age} ปี · เพศ {patient.gender} · สถานภาพ {patient.maritalStatus}
+              </p>
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
+                <StageChip stage={submission.stage} label={submission.stageLabel} />
+                <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-slate-600">
+                  {submission.group.name}
                 </span>
-                <p className="font-mono text-sm font-black text-amber-950">
-                  {selectedSubmission.cardRoom.diseaseCode || "(ไม่ได้ระบุ)"}
-                </p>
+                <span className="text-slate-400">ห้องเรียน: {submission.classroom.name}</span>
               </div>
             </div>
+
+            <button
+              type="button"
+              data-pdf-ignore
+              onClick={onClose}
+              aria-label="ปิดหน้าต่าง"
+              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-200/70 hover:text-slate-700"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
+        </header>
 
-          {/* Station 2: Nurse Info */}
-          <div data-pdf-block className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
-                <HeartPulse className="h-4 w-4" /> บันทึกการซักประวัติและสัญญาณชีพ (พยาบาล)
-              </h4>
-              {selectedSubmission.nurse && (
-                <span className="text-xs text-slate-500">
-                  โดย: <strong>{selectedSubmission.nurse.nurseName}</strong> ·{" "}
-                  {formatDateTime(selectedSubmission.nurse.createdAt)}
+        {/* เนื้อหา (เลื่อนได้) */}
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">
+          <ScoreSummary submission={submission} />
+
+          <div className="space-y-6">
+            {/* 1. ห้องบัตร */}
+            <StationSection
+              stationKey="card"
+              filled
+              by={cardRoom.clerkName}
+              at={cardRoom.createdAt}
+              emptyText=""
+            >
+              <div
+                className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2.5 ${
+                  cardRoom.diseaseCode ? "border-amber-200 bg-amber-50" : "border-dashed border-slate-200 bg-white"
+                }`}
+              >
+                <span
+                  className={`flex items-center gap-1.5 text-xs font-bold ${
+                    cardRoom.diseaseCode ? "text-amber-800" : "text-slate-400"
+                  }`}
+                >
+                  <KeyRound className="h-3.5 w-3.5" />
+                  เฉลยรหัสโรคที่ห้องบัตรตั้งไว้
                 </span>
-              )}
-            </div>
+                <span
+                  className={`font-mono text-sm font-black ${
+                    cardRoom.diseaseCode ? "text-amber-950" : "font-sans font-medium text-slate-400"
+                  }`}
+                >
+                  {cardRoom.diseaseCode || "(ไม่ได้ระบุ)"}
+                </span>
+              </div>
+            </StationSection>
 
-            {selectedSubmission.nurse ? (
-              <div className="space-y-3 text-xs">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div className="rounded-xl bg-white p-2 border border-emerald-100">
-                    <span className="text-slate-400">ความดันโลหิต</span>
-                    <p className="font-bold text-slate-800">
-                      {selectedSubmission.nurse.systolicBp}/{selectedSubmission.nurse.diastolicBp}{" "}
-                      mmHg
-                    </p>
+            {/* 2. พยาบาล */}
+            <StationSection
+              stationKey="nurse"
+              filled={!!nurse}
+              by={nurse?.nurseName}
+              at={nurse?.createdAt}
+              badge={<ScoreBadge score={nurse?.evaluationScore} maximum={SCORE_MAXIMUMS.nurse} />}
+              emptyText="ยังไม่มีการบันทึกจากพยาบาล"
+            >
+              {nurse && (
+                <>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <Stat label="ความดันโลหิต">
+                      {nurse.systolicBp}/{nurse.diastolicBp} mmHg
+                    </Stat>
+                    <Stat label="ชีพจร">{nurse.pulseBpm} bpm</Stat>
+                    <Stat label="น้ำหนัก / ส่วนสูง">
+                      {nurse.weightKg} กก. / {nurse.heightCm} ซม.
+                    </Stat>
+                    <Stat label="โรคประจำตัว">{chronicDisease}</Stat>
                   </div>
-                  <div className="rounded-xl bg-white p-2 border border-emerald-100">
-                    <span className="text-slate-400">ชีพจร</span>
-                    <p className="font-bold text-slate-800">
-                      {selectedSubmission.nurse.pulseBpm} bpm
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-white p-2 border border-emerald-100">
-                    <span className="text-slate-400">น้ำหนัก / ส่วนสูง</span>
-                    <p className="font-bold text-slate-800">
-                      {selectedSubmission.nurse.weightKg} กก. / {selectedSubmission.nurse.heightCm}{" "}
-                      ซม.
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-white p-2 border border-emerald-100">
-                    <span className="text-slate-400">โรคประจำตัว</span>
-                    <p className="font-bold text-slate-800">
-                      {selectedSubmission.nurse.chronicDiseaseStatus === "YES"
-                        ? selectedSubmission.nurse.chronicDiseaseDetails
-                        : selectedSubmission.nurse.chronicDiseaseStatus === "NONE"
-                        ? "ไม่มี"
-                        : "ไม่ทราบ"}
-                    </p>
-                  </div>
-                </div>
 
-                <div data-pdf-block className="rounded-xl bg-white p-3 border border-emerald-100 space-y-2">
-                  <div>
-                    <span className="text-slate-400 font-semibold">อาการจากโรค:</span>
-                    <p className="whitespace-pre-wrap font-medium text-slate-800 mt-0.5">
-                      {selectedSubmission.nurse.symptomDescription}
-                    </p>
+                  <div data-pdf-block className="space-y-2.5 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                    <TextBlock label="อาการจากโรค">{nurse.symptomDescription}</TextBlock>
+                    {nurse.notes && <TextBlock label="หมายเหตุ">{nurse.notes}</TextBlock>}
                   </div>
-                  {selectedSubmission.nurse.notes && (
-                    <div>
-                      <span className="text-slate-400 font-semibold">หมายเหตุ:</span>
-                      <p className="font-medium text-slate-800 mt-0.5">
-                        {selectedSubmission.nurse.notes}
-                      </p>
+
+                  {nurse.endocrineGlandChoice && (
+                    <div data-pdf-block className="grid gap-2 sm:grid-cols-2">
+                      <AnswerCard heading="ต่อมไร้ท่อที่ผิดปกติ" correct={nurse.isGlandCorrect}>
+                        {nurse.endocrineGlandChoice}
+                      </AnswerCard>
+                      <AnswerCard heading="ฮอร์โมนที่ผิดปกติ" correct={nurse.isHormoneCorrect}>
+                        {nurse.abnormalHormoneChoice}
+                      </AnswerCard>
                     </div>
                   )}
-                </div>
-
-                {selectedSubmission.nurse.endocrineGlandChoice && (
-                  <div data-pdf-block className="space-y-2">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {(
-                        [
-                          [
-                            "ต่อมไร้ท่อที่ผิดปกติ",
-                            selectedSubmission.nurse.endocrineGlandChoice,
-                            selectedSubmission.nurse.isGlandCorrect,
-                          ],
-                          [
-                            "ฮอร์โมนที่ผิดปกติ",
-                            selectedSubmission.nurse.abnormalHormoneChoice,
-                            selectedSubmission.nurse.isHormoneCorrect,
-                          ],
-                        ] as const
-                      ).map(([heading, choice, correct]) => (
-                        <div
-                          key={heading}
-                          className={`rounded-xl border p-3 ${
-                            correct === true
-                              ? "border-emerald-200 bg-emerald-50/60"
-                              : correct === false
-                                ? "border-rose-200 bg-rose-50/60"
-                                : "border-slate-200 bg-white"
-                          }`}
-                        >
-                          <div className="mb-1 flex items-center justify-between">
-                            <span className="font-bold text-slate-500">{heading}</span>
-                            <span
-                              className={`font-bold ${
-                                correct === true
-                                  ? "text-emerald-700"
-                                  : correct === false
-                                    ? "text-rose-600"
-                                    : "text-slate-400"
-                              }`}
-                            >
-                              {correct === true ? "ถูกต้อง" : correct === false ? "ไม่ถูกต้อง" : "ไม่มีเฉลย"}
-                            </span>
-                          </div>
-                          <p className="font-semibold text-slate-800">{choice}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {selectedSubmission.nurse.evaluationScore !== null && (
-                      <div className="flex items-center justify-between rounded-xl border border-emerald-100 bg-white p-3 text-sm font-bold">
-                        <span>คะแนนสถานีพยาบาล:</span>
-                        <span className="text-emerald-900">
-                          {selectedSubmission.nurse.evaluationScore}/{SCORE_MAXIMUMS.nurse}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400 italic">ยังไม่มีการบันทึกจากพยาบาล</p>
-            )}
-          </div>
-
-          {/* Station 3: Lab Result */}
-          <div data-pdf-block className="rounded-2xl border border-indigo-200 bg-indigo-50/30 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-800 flex items-center gap-1.5">
-                <FlaskConical className="h-4 w-4" /> ผลตรวจทางห้องปฏิบัติการ (เทคนิคการแพทย์)
-              </h4>
-              {selectedSubmission.lab && (
-                <span className="text-xs text-slate-500">
-                  โดย: <strong>{selectedSubmission.lab.medTechName}</strong> ·{" "}
-                  {formatDateTime(selectedSubmission.lab.createdAt)}
-                </span>
+                </>
               )}
-            </div>
+            </StationSection>
 
-            {selectedSubmission.lab ? (
-              <div className="space-y-3 text-xs">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-xl border border-indigo-200 bg-white px-2.5 py-1 font-bold text-indigo-900">
-                    ชุดผลตรวจ: {selectedSubmission.lab.panelDiseaseName}
-                    {selectedSubmission.lab.panelDiseaseCode
-                      ? ` (${selectedSubmission.lab.panelDiseaseCode})`
-                      : ""}
-                  </span>
-                  {selectedSubmission.lab.isCorrect === null ? (
-                    <span className="rounded-xl border border-slate-200 bg-slate-100 px-2.5 py-1 font-bold text-slate-500">
-                      ห้องบัตรไม่ได้ระบุเฉลย
+            {/* 3. เทคนิคการแพทย์ */}
+            <StationSection
+              stationKey="lab"
+              filled={!!lab}
+              by={lab?.medTechName}
+              at={lab?.createdAt}
+              badge={
+                <ScoreBadge score={lab?.evaluationScore} maximum={SCORE_MAXIMUMS.medTech} correct={lab?.isCorrect} />
+              }
+              emptyText="ยังไม่มีการส่งผลตรวจจากเทคนิคการแพทย์"
+            >
+              {lab && (
+                <>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 font-bold text-indigo-900">
+                      ชุดผลตรวจ: {lab.panelDiseaseName}
+                      {lab.panelDiseaseCode ? ` (${lab.panelDiseaseCode})` : ""}
                     </span>
-                  ) : selectedSubmission.lab.isCorrect ? (
-                    <span className="inline-flex items-center gap-1 rounded-xl border border-emerald-300 bg-emerald-50 px-2.5 py-1 font-bold text-emerald-700">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> ชุดตรวจตรงเฉลย
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-xl border border-rose-300 bg-rose-50 px-2.5 py-1 font-bold text-rose-700">
-                      <XCircle className="h-3.5 w-3.5" /> ชุดตรวจไม่ตรงเฉลย
-                    </span>
-                  )}
-                  {selectedSubmission.lab.evaluationScore !== null && (
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1 font-black font-mono ${
-                        selectedSubmission.lab.isCorrect
-                          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                          : "border-rose-300 bg-rose-50 text-rose-700"
-                      }`}
-                    >
-                      คะแนน: {selectedSubmission.lab.evaluationScore}/2
-                    </span>
-                  )}
-                </div>
+                    <Verdict
+                      correct={lab.isCorrect}
+                      labels={["ชุดตรวจตรงเฉลย", "ชุดตรวจไม่ตรงเฉลย", "ห้องบัตรไม่ได้ระบุเฉลย"]}
+                    />
+                  </div>
 
-                <div className="overflow-x-auto rounded-xl border border-indigo-100 bg-white">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-100 text-left text-slate-400">
-                        <th className="px-3 py-2 font-bold">รายการตรวจ</th>
-                        <th className="px-3 py-2 font-bold">ผลตรวจ</th>
-                        <th className="px-3 py-2 font-bold">ค่าอ้างอิง</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedSubmission.lab.items.map((item, idx) => (
-                        <tr key={`${item.name}-${idx}`} className="border-b border-slate-50 last:border-0">
-                          <td className="px-3 py-2 font-semibold text-slate-800">{item.name}</td>
-                          <td className="px-3 py-2 font-bold text-indigo-700">{item.result}</td>
-                          <td className="px-3 py-2 text-slate-500">{item.referenceRange || "-"}</td>
+                  <div data-pdf-block className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-500">
+                          <th className="px-3 py-2 font-bold">รายการตรวจ</th>
+                          <th className="px-3 py-2 font-bold">ผลตรวจ</th>
+                          <th className="px-3 py-2 font-bold">ค่าอ้างอิง</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {selectedSubmission.lab.notes && (
-                  <div className="rounded-xl bg-white p-3 border border-indigo-100">
-                    <span className="text-slate-400 font-semibold">หมายเหตุจากห้องแล็บ:</span>
-                    <p className="font-medium text-slate-800 mt-0.5">
-                      {selectedSubmission.lab.notes}
-                    </p>
+                      </thead>
+                      <tbody>
+                        {lab.items.map((item, idx) => (
+                          <tr key={`${item.name}-${idx}`} className="border-b border-slate-100 last:border-0">
+                            <td className="px-3 py-2 font-semibold text-slate-800">{item.name}</td>
+                            <td className="px-3 py-2 font-bold text-indigo-700">{item.result}</td>
+                            <td className="px-3 py-2 text-slate-500">{item.referenceRange || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400 italic">ยังไม่มีการส่งผลตรวจจากเทคนิคการแพทย์</p>
-            )}
-          </div>
 
-          {/* Station 4: Doctor Diagnosis */}
-          <div data-pdf-block className="rounded-2xl border border-sky-200 bg-sky-50/30 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
-                <Stethoscope className="h-4 w-4" /> บันทึกการวินิจฉัยโรค (แพทย์)
-              </h4>
-              {selectedSubmission.doctor && (
-                <span className="text-xs text-slate-500">
-                  โดย: <strong>{selectedSubmission.doctor.doctorName}</strong> ·{" "}
-                  {formatDateTime(selectedSubmission.doctor.createdAt)}
-                </span>
+                  {lab.notes && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                      <TextBlock label="หมายเหตุจากห้องแล็บ">{lab.notes}</TextBlock>
+                    </div>
+                  )}
+                </>
               )}
-            </div>
+            </StationSection>
 
-            {selectedSubmission.doctor ? (
-              <div className="space-y-3 text-xs">
-                {/* Diagnosis Comparison Card */}
-                <div className="rounded-xl bg-white p-3 border border-sky-200 space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                    <div>
-                      <span className="text-slate-400">โรคที่แพทย์วินิจฉัย:</span>
-                      <p className="text-sm font-black text-sky-900">
-                        {selectedSubmission.doctor.diseaseName}{" "}
-                        <span className="font-mono text-xs text-slate-400">
-                          (รหัส: {selectedSubmission.doctor.diseaseCode})
-                        </span>
-                      </p>
+            {/* 4. แพทย์ */}
+            <StationSection
+              stationKey="doctor"
+              filled={!!doctor}
+              by={doctor?.doctorName}
+              at={doctor?.createdAt}
+              emptyText="ยังไม่มีการตรวจวินิจฉัยจากแพทย์"
+            >
+              {doctor && (
+                <>
+                  <div data-pdf-block className="space-y-3 rounded-xl border border-sky-200 bg-sky-50/40 p-3.5">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[11px] text-slate-400">โรคที่แพทย์วินิจฉัย</p>
+                        <p className="text-base font-black leading-snug text-sky-900">
+                          {doctor.diseaseName}{" "}
+                          <span className="font-mono text-xs font-bold text-slate-400">
+                            (รหัส {doctor.diseaseCode})
+                          </span>
+                        </p>
+                      </div>
+                      <Verdict
+                        correct={
+                          submission.diagnosisEvaluation === "CORRECT"
+                            ? true
+                            : submission.diagnosisEvaluation === "INCORRECT"
+                              ? false
+                              : null
+                        }
+                        labels={["ตรงกับเฉลยของห้องบัตร", "ไม่ตรงกับเฉลยของห้องบัตร", "ไม่มีเฉลยรหัสโรค"]}
+                      />
                     </div>
-                    <div>
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 font-bold ${
-                          selectedSubmission.diagnosisEvaluation === "CORRECT"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : selectedSubmission.diagnosisEvaluation === "INCORRECT"
-                            ? "bg-rose-100 text-rose-800"
-                            : "bg-slate-100 text-slate-700"
-                        }`}
-                      >
-                        {selectedSubmission.diagnosisEvaluation === "CORRECT" ? (
-                          <>
-                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                            <span>ตรงกับเฉลยของห้องบัตร</span>
-                          </>
-                        ) : selectedSubmission.diagnosisEvaluation === "INCORRECT" ? (
-                          <>
-                            <XCircle className="h-4 w-4 text-rose-600 shrink-0" />
-                            <span>ไม่ตรงกับเฉลยของห้องบัตร</span>
-                          </>
-                        ) : (
-                          <span>ไม่มีเฉลยรหัสโรค</span>
-                        )}
-                      </span>
+                    <div className="border-t border-sky-100 pt-3">
+                      <TextBlock label="รายละเอียดการวินิจฉัยของแพทย์">{doctor.doctorDiagnosis}</TextBlock>
                     </div>
                   </div>
 
-                  <div>
-                    <span className="text-slate-400 font-semibold">รายละเอียดการวินิจฉัยของแพทย์:</span>
-                    <p className="font-medium text-slate-800 mt-0.5 whitespace-pre-line">
-                      {selectedSubmission.doctor.doctorDiagnosis}
-                    </p>
-                  </div>
-
-                  {/* AI Evaluation Card */}
-                  {selectedSubmission.doctor.evaluationScore !== undefined && selectedSubmission.doctor.evaluationScore !== null ? (
-                    <div data-pdf-block className="rounded-xl border border-sky-200 bg-sky-50/50 p-3.5 space-y-2.5 mt-2">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sky-200/60 pb-2">
-                        <div className="flex items-center gap-2 font-bold text-sky-900">
-                          <Sparkles className="h-4 w-4 text-sky-600 shrink-0" />
-                          <span>การประเมินและให้คะแนนโดย AI:</span>
-                          {selectedSubmission.doctor.aiModel && (
-                            <span className="inline-flex items-center rounded-lg bg-white border border-sky-200 px-2 py-0.5 text-[11px] font-mono font-bold text-sky-700 shadow-2xs">
-                              {selectedSubmission.doctor.aiModel}
+                  {typeof doctor.evaluationScore === "number" ? (
+                    <div data-pdf-block className="space-y-3 rounded-xl border border-slate-200 bg-white p-3.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-sky-900">
+                          <Sparkles className="h-4 w-4 shrink-0 text-sky-600" />
+                          ประเมินและให้คะแนนโดย AI
+                          {doctor.aiModel && (
+                            <span className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-slate-500">
+                              {doctor.aiModel}
                             </span>
                           )}
                         </div>
-                        <div className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-xs font-black shadow-2xs border border-sky-200">
-                          <span className="text-slate-500">คะแนน:</span>
-                          <span
-                            className={`text-sm ${
-                              selectedSubmission.doctor.isCorrect ? "text-emerald-600" : "text-rose-600"
-                            }`}
-                          >
-                            {selectedSubmission.doctor.evaluationScore}
-                          </span>
-                          <span className="text-slate-400">/ 10</span>
-                        </div>
+                        <ScoreBadge
+                          score={doctor.evaluationScore}
+                          maximum={SCORE_MAXIMUMS.doctor}
+                          correct={doctor.isCorrect}
+                        />
                       </div>
 
-                      {selectedSubmission.doctor.aiStrengths && (
-                        <div data-pdf-block className="rounded-lg bg-amber-50/80 border border-amber-200/80 p-2.5 space-y-1 text-xs">
-                          <span className="font-bold text-amber-900 flex items-center gap-1">
-                            <Sparkles className="h-3.5 w-3.5 text-amber-600" /> จุดเด่นที่ทำได้ดี:
-                          </span>
-                          <p className="text-amber-950 font-medium leading-relaxed pl-4">
-                            {selectedSubmission.doctor.aiStrengths}
+                      {doctor.aiStrengths && (
+                        <div data-pdf-block className="rounded-lg border border-amber-200 bg-amber-50/80 p-3">
+                          <p className="flex items-center gap-1 text-xs font-bold text-amber-900">
+                            <Sparkles className="h-3.5 w-3.5 text-amber-600" /> จุดเด่นที่ทำได้ดี
+                          </p>
+                          <p className="mt-1 whitespace-pre-line text-sm font-medium leading-relaxed text-amber-950">
+                            {doctor.aiStrengths}
                           </p>
                         </div>
                       )}
 
-                      {selectedSubmission.doctor.aiFeedback && (
-                        <div data-pdf-block className="rounded-lg bg-white border border-sky-100 p-2.5 space-y-1 text-xs">
-                          <span className="font-bold text-sky-900">
-                            บทวิเคราะห์และความเห็นทางการแพทย์:
-                          </span>
-                          <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-line pl-1">
-                            {selectedSubmission.doctor.aiFeedback}
-                          </p>
+                      {doctor.aiFeedback && (
+                        <div data-pdf-block>
+                          <TextBlock label="บทวิเคราะห์และความเห็นทางการแพทย์">{doctor.aiFeedback}</TextBlock>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3.5 space-y-1.5 mt-2 text-xs">
-                      <div className="flex items-center gap-2 font-bold text-amber-900">
-                        <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-                        <span>สถานะ AI: ใช้งานไม่ได้ชั่วคราว</span>
-                      </div>
-                      <p className="text-amber-950 font-medium pl-6">
-                        {selectedSubmission.doctor.aiFeedback ||
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5">
+                      <p className="flex items-center gap-2 text-sm font-bold text-amber-900">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                        สถานะ AI: ใช้งานไม่ได้ชั่วคราว
+                      </p>
+                      <p className="mt-1 pl-6 text-sm font-medium text-amber-950">
+                        {doctor.aiFeedback ||
                           "ระบบ AI ไม่สามารถประเมินผลได้ในขณะที่แพทย์ส่งผล แต่ระบบได้ทำการบันทึกและตรวจสอบความถูกต้องของโรคเรียบร้อยแล้ว"}
                       </p>
                     </div>
                   )}
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400 italic">ยังไม่มีการตรวจวินิจฉัยจากแพทย์</p>
-            )}
-          </div>
-
-          {/* Station 5: Pharmacy Dispense */}
-          <div data-pdf-block className="rounded-2xl border border-fuchsia-200 bg-fuchsia-50/30 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-fuchsia-800 flex items-center gap-1.5">
-                <Pill className="h-4 w-4" /> บันทึกการจ่ายยา (เภสัชกร)
-              </h4>
-              {selectedSubmission.pharmacy && (
-                <span className="text-xs text-slate-500">
-                  โดย: <strong>{selectedSubmission.pharmacy.pharmacistName}</strong> ·{" "}
-                  {formatDateTime(selectedSubmission.pharmacy.createdAt)}
-                </span>
+                </>
               )}
-            </div>
+            </StationSection>
 
-            {selectedSubmission.pharmacy ? (
-              selectedSubmission.pharmacy.hormoneChoiceKey ? (
-                <div className="space-y-2 text-xs">
-                  {(
-                    [
-                      [
-                        "ความผิดปกติของฮอร์โมน (A-U)",
-                        selectedSubmission.pharmacy.hormoneChoiceKey,
-                        selectedSubmission.pharmacy.hormoneChoiceLabel,
-                        selectedSubmission.pharmacy.isHormoneCorrect,
-                      ],
-                      [
-                        "ยา/การรักษา (ก-ธ)",
-                        selectedSubmission.pharmacy.treatmentChoiceKey,
-                        selectedSubmission.pharmacy.treatmentChoiceLabel,
-                        selectedSubmission.pharmacy.isTreatmentCorrect,
-                      ],
-                    ] as const
-                  ).map(([heading, choiceKey, choiceLabel, correct]) => (
-                    <div
-                      key={heading}
-                      className={`rounded-xl border p-3 ${
-                        correct === true
-                          ? "border-emerald-200 bg-emerald-50/60"
-                          : correct === false
-                            ? "border-rose-200 bg-rose-50/60"
-                            : "border-slate-200 bg-white"
-                      }`}
+            {/* 5. เภสัชกร */}
+            <StationSection
+              stationKey="pharmacy"
+              isLast
+              filled={!!pharmacy}
+              by={pharmacy?.pharmacistName}
+              at={pharmacy?.createdAt}
+              badge={<ScoreBadge score={pharmacy?.evaluationScore} maximum={SCORE_MAXIMUMS.pharmacist} />}
+              emptyText="ยังไม่มีการจ่ายยาจากห้องยา"
+            >
+              {pharmacy &&
+                (pharmacy.hormoneChoiceKey ? (
+                  <div data-pdf-block className="grid gap-2 sm:grid-cols-2">
+                    <AnswerCard
+                      heading="ความผิดปกติของฮอร์โมน (A-U)"
+                      correct={pharmacy.isHormoneCorrect}
+                      badge={pharmacy.hormoneChoiceKey}
                     >
-                      <div className="mb-1 flex items-center justify-between">
-                        <span className="font-bold text-slate-500">{heading}</span>
-                        <span
-                          className={`font-bold ${
-                            correct === true
-                              ? "text-emerald-700"
-                              : correct === false
-                                ? "text-rose-600"
-                                : "text-slate-400"
-                          }`}
-                        >
-                          {correct === true ? "ถูกต้อง" : correct === false ? "ไม่ถูกต้อง" : "ไม่มีเฉลย"}
-                        </span>
-                      </div>
-                      <p className="font-semibold text-slate-800">
-                        <span className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded bg-fuchsia-600 text-[10px] font-black text-white">
-                          {choiceKey}
-                        </span>
-                        {choiceLabel}
-                      </p>
-                    </div>
-                  ))}
-                  {selectedSubmission.pharmacy.evaluationScore !== null && (
-                    <div className="flex items-center justify-between rounded-xl border border-fuchsia-100 bg-white p-3 text-sm font-bold">
-                      <span>คะแนนสถานีห้องยา:</span>
-                      <span className="text-fuchsia-900">
-                        {selectedSubmission.pharmacy.evaluationScore}/{SCORE_MAXIMUMS.pharmacist}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2 text-xs">
-                  <div className="rounded-xl bg-white p-3 border border-fuchsia-100">
-                    <div className="flex items-center justify-between font-bold text-slate-700 border-b border-slate-100 pb-2 mb-2">
+                      {pharmacy.hormoneChoiceLabel}
+                    </AnswerCard>
+                    <AnswerCard
+                      heading="ยา/การรักษา (ก-ธ)"
+                      correct={pharmacy.isTreatmentCorrect}
+                      badge={pharmacy.treatmentChoiceKey}
+                    >
+                      {pharmacy.treatmentChoiceLabel}
+                    </AnswerCard>
+                  </div>
+                ) : (
+                  <div data-pdf-block className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500">
                       <span>รายการยาที่จ่าย</span>
                       <span>จำนวนเม็ด</span>
                     </div>
-                    <div className="space-y-1.5">
-                      {Array.isArray(selectedSubmission.pharmacy.medicines) &&
-                        (selectedSubmission.pharmacy.medicines as MedicineItem[]).map((med, idx) => (
-                          <div key={idx} className="flex items-center justify-between">
-                            <span className="font-medium text-slate-800">
-                              {idx + 1}. {med.name}
-                            </span>
-                            <span className="font-bold text-fuchsia-900">
-                              {med.tabletCount} เม็ด
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                    <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between font-bold text-sm">
-                      <span>ยอดรวมยาทั้งหมด:</span>
-                      <span className="text-fuchsia-900">
-                        {selectedSubmission.pharmacy.totalTablets ?? 0} เม็ด
-                      </span>
+                    <ul className="divide-y divide-slate-100 text-sm">
+                      {medicines.map((med, idx) => (
+                        <li key={idx} className="flex items-center justify-between gap-3 px-3 py-2">
+                          <span className="font-medium text-slate-800">
+                            {idx + 1}. {med.name}
+                          </span>
+                          <span className="shrink-0 font-bold text-fuchsia-900">{med.tabletCount} เม็ด</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex items-center justify-between border-t border-slate-200 bg-fuchsia-50/60 px-3 py-2.5 text-sm font-bold">
+                      <span className="text-slate-700">ยอดรวมยาทั้งหมด</span>
+                      <span className="text-fuchsia-900">{pharmacy.totalTablets ?? 0} เม็ด</span>
                     </div>
                   </div>
-                </div>
-              )
-            ) : (
-              <p className="text-xs text-slate-400 italic">ยังไม่มีการจ่ายยาจากห้องยา</p>
-            )}
+                ))}
+            </StationSection>
           </div>
         </div>
 
-        {/* Modal Footer */}
-        <div
+        {/* ท้ายโมดัล — ไม่ถูกใส่ลงไฟล์ PDF */}
+        <footer
           data-pdf-ignore
-          className="mt-6 flex items-center justify-end gap-2 border-t border-slate-100 pt-4"
+          className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-white px-4 py-3.5 sm:px-6"
         >
           {exportError && (
-            <p className="mr-auto text-xs font-semibold text-red-600">{exportError}</p>
+            <p role="alert" className="mr-auto text-xs font-semibold text-red-600">
+              {exportError}
+            </p>
           )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            ปิดหน้าต่าง
+          </button>
           <button
             type="button"
             disabled={exportingPdf}
             onClick={onExport}
-            className="flex items-center gap-1.5 rounded-xl bg-red-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-red-700 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-red-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-red-600/25 transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {exportingPdf ? (
               <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -652,14 +677,7 @@ export function DossierModal({
             )}
             {exportingPdf ? "กำลังสร้าง PDF..." : "ส่งออก PDF"}
           </button>
-          <button
-            type="button"
-            onClick={() => onClose()}
-            className="rounded-xl bg-slate-100 px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
-          >
-            ปิดหน้าต่าง
-          </button>
-        </div>
+        </footer>
       </div>
     </div>
   );
