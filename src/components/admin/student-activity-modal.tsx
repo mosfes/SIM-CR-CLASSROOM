@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { downloadElementAsPdf } from "@/lib/pdf-export";
 import { formatPatientCode } from "@/lib/patient-code";
+import { NURSE_MAX_SCORE } from "@/lib/nurse-choices";
 
 interface StudentBasic {
   id: string;
@@ -422,7 +423,7 @@ export function StudentActivityModal({ student, onClose }: StudentActivityModalP
                   <span className="text-xs text-slate-500 font-normal">เคส</span>
                   {data.summary.nurseStats.avgScore !== null && (
                     <span className="ml-auto text-[11px] font-semibold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-md">
-                      เฉลี่ย {data.summary.nurseStats.avgScore}/2
+                      เฉลี่ย {data.summary.nurseStats.avgScore}/{NURSE_MAX_SCORE}
                     </span>
                   )}
                 </div>
@@ -910,7 +911,7 @@ export function StudentActivityModal({ student, onClose }: StudentActivityModalP
                                 ))}
                                 {typeof act.payload.evaluationScore === "number" && (
                                   <p className="text-right text-[11px] font-bold text-emerald-900 sm:col-span-2">
-                                    คะแนนสถานีพยาบาล: {act.payload.evaluationScore}/2
+                                    คะแนนสถานีพยาบาล: {act.payload.evaluationScore}/{NURSE_MAX_SCORE}
                                   </p>
                                 )}
                               </div>

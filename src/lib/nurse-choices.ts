@@ -71,8 +71,8 @@ export const NURSE_DECOY_SEED = {
 
 export const NURSE_DECOY_MAX_ITEMS = 100;
 
-/** คะแนนเต็มของสถานีพยาบาล: ต่อมไร้ท่อ 1 คะแนน + ฮอร์โมน 1 คะแนน */
-export const NURSE_MAX_SCORE = 2;
+/** คะแนนเต็มของสถานีพยาบาล: ต้องตอบถูกทั้งต่อมไร้ท่อและฮอร์โมนจึงได้ 1 คะแนน ถูกข้อเดียวได้ 0 */
+export const NURSE_MAX_SCORE = 1;
 export const NURSE_CHOICE_LABEL_MAX_LENGTH = 191;
 
 /** ตัดช่องว่างหัวท้ายและยุบช่องว่างซ้อนให้เหลือช่องเดียว */
@@ -150,8 +150,10 @@ export interface NurseEvaluation {
 }
 
 /**
- * ให้คะแนนคำตอบของพยาบาลเทียบกับเฉลยของโรคจริงที่ห้องบัตรกำหนด ข้อละ 1 คะแนน (เต็ม 2)
- * ข้อที่โรคนั้นยังไม่มีเฉลยจะเป็น null และไม่นับคะแนน ถ้าไม่มีเฉลยทั้งสองข้อคะแนนรวมเป็น null
+ * ให้คะแนนคำตอบของพยาบาลเทียบกับเฉลยของโรคจริงที่ห้องบัตรกำหนด แบบได้ทั้งหมดหรือไม่ได้เลย:
+ * ต้องถูกทั้งต่อมไร้ท่อและฮอร์โมนจึงได้ 1 คะแนน ถูกข้อเดียวหรือผิดทั้งคู่ได้ 0
+ * ข้อที่โรคนั้นยังไม่มีเฉลยจะเป็น null และไม่นำมาตัดสิน (ถูกทุกข้อที่มีเฉลย = ได้ 1)
+ * ถ้าไม่มีเฉลยทั้งสองข้อ คะแนนรวมเป็น null
  */
 export function evaluateNurseChoice({
   answer,
@@ -175,7 +177,7 @@ export function evaluateNurseChoice({
   return {
     isGlandCorrect,
     isHormoneCorrect,
-    score: (isGlandCorrect ? 1 : 0) + (isHormoneCorrect ? 1 : 0),
+    score: isGlandCorrect !== false && isHormoneCorrect !== false ? NURSE_MAX_SCORE : 0,
   };
 }
 

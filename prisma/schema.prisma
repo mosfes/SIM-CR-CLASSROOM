@@ -281,7 +281,7 @@ model NurseInterview {
   chiefComplaint        String?           @db.Text
   symptomDescription    String            @db.Text
   notes                 String?           @db.Text
-  // คำตอบของพยาบาลจากตัวเลือกที่ผูกกับโรค และผลการให้คะแนน (ต่อมไร้ท่อ 1 + ฮอร์โมน 1 = เต็ม 2)
+  // คำตอบของพยาบาลจากตัวเลือกที่ผูกกับโรค และผลการให้คะแนน (ถูกทั้งสองช่อง = 1, นอกนั้น = 0)
   endocrineGlandChoice  String?
   abnormalHormoneChoice String?
   isGlandCorrect        Boolean?

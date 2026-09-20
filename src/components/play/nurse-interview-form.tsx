@@ -423,7 +423,7 @@ export function NurseInterviewForm({
             icon={Stethoscope}
             number="4"
             title={`วิเคราะห์ความผิดปกติ (${NURSE_MAX_SCORE} คะแนน)`}
-            description="อ่านอาการของผู้ป่วยแล้วเลือกต่อมไร้ท่อและฮอร์โมนที่น่าจะผิดปกติ · ถูกข้อละ 1 คะแนน"
+            description="อ่านอาการของผู้ป่วยแล้วเลือกต่อมไร้ท่อและฮอร์โมนที่น่าจะผิดปกติ · ต้องถูกทั้ง 2 ช่องจึงได้ 1 คะแนน"
           />
 
           {choicesAvailable ? (
