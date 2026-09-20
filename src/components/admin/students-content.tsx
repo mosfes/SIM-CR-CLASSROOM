@@ -14,13 +14,13 @@ import {
   Upload,
   X,
   AlertTriangle,
-  ChevronDown,
   ChevronRight,
   ChevronLeft,
   FileSpreadsheet,
   Check,
   Activity,
 } from "lucide-react";
+import { AppSelect } from "@/components/ui/app-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StudentsTableSkeleton } from "@/components/admin/skeleton-loaders";
 import { StudentActivityModal } from "./student-activity-modal";
@@ -635,23 +635,22 @@ export function StudentsContent({
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Status Filter */}
-            <div className="relative">
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="appearance-none rounded-2xl border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-xs font-normal text-slate-700 focus:border-red-500 focus:outline-none"
-              >
-                <option value="ALL">ทุกสถานะ</option>
-                <option value="ACTIVE">ใช้งาน</option>
-                <option value="INACTIVE">ปิดใช้งาน</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400">
-                <ChevronDown className="h-3.5 w-3.5" />
-              </div>
-            </div>
+            <AppSelect
+              size="filter"
+              rounded="2xl"
+              className="w-40"
+              ariaLabel="กรองตามสถานะ"
+              options={[
+                { value: "ALL", label: "ทุกสถานะ" },
+                { value: "ACTIVE", label: "ใช้งาน" },
+                { value: "INACTIVE", label: "ปิดใช้งาน" },
+              ]}
+              value={statusFilter}
+              onChange={(value) => {
+                setStatusFilter(value);
+                setCurrentPage(1);
+              }}
+            />
 
             {/* Clear Filter button if any filter is active */}
             {statusFilter !== "ALL" && (

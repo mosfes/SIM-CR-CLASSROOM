@@ -11,7 +11,6 @@ import {
   RefreshCw,
   X,
   AlertTriangle,
-  ChevronDown,
   ChevronRight,
   ChevronLeft,
   ArrowUpDown,
@@ -20,6 +19,7 @@ import {
   FlaskConical,
   FileDown,
 } from "lucide-react";
+import { AppSelect } from "@/components/ui/app-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DiseasesTableSkeleton } from "@/components/admin/skeleton-loaders";
 import {
@@ -514,47 +514,36 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-                <ArrowUpDown className="h-3.5 w-3.5" />
-              </div>
-              <select
-                value={sortOption}
-                onChange={(e) => {
-                  setSortOption(e.target.value);
-                  setCurrentPage(1);
-                }}
-                title="เลือกวิธีเรียงลำดับ"
-                className="appearance-none rounded-2xl border border-slate-200 bg-white py-2.5 pl-9 pr-10 text-xs font-normal text-slate-700 focus:border-red-500 focus:outline-none cursor-pointer"
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400">
-                <ChevronDown className="h-3.5 w-3.5" />
-              </div>
-            </div>
+            <AppSelect
+              size="filter"
+              rounded="2xl"
+              className="w-56"
+              ariaLabel="เลือกวิธีเรียงลำดับ"
+              icon={<ArrowUpDown className="h-3.5 w-3.5" />}
+              options={SORT_OPTIONS}
+              value={sortOption}
+              onChange={(value) => {
+                setSortOption(value);
+                setCurrentPage(1);
+              }}
+            />
 
-            <div className="relative">
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="appearance-none rounded-2xl border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-xs font-normal text-slate-700 focus:border-red-500 focus:outline-none cursor-pointer"
-              >
-                <option value="ALL">ทุกสถานะ</option>
-                <option value="ACTIVE">เปิดใช้งาน</option>
-                <option value="INACTIVE">ปิดใช้งาน</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400">
-                <ChevronDown className="h-3.5 w-3.5" />
-              </div>
-            </div>
+            <AppSelect
+              size="filter"
+              rounded="2xl"
+              className="w-40"
+              ariaLabel="กรองตามสถานะ"
+              options={[
+                { value: "ALL", label: "ทุกสถานะ" },
+                { value: "ACTIVE", label: "เปิดใช้งาน" },
+                { value: "INACTIVE", label: "ปิดใช้งาน" },
+              ]}
+              value={statusFilter}
+              onChange={(value) => {
+                setStatusFilter(value);
+                setCurrentPage(1);
+              }}
+            />
 
             <button
               type="button"

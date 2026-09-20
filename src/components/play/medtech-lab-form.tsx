@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import type { DiseaseLabResult } from "@/lib/disease-lab-results";
+import { AppSelect } from "@/components/ui/app-select";
 import { playClick, playSuccess } from "@/lib/play/sound";
 import { formatPatientCode } from "@/lib/patient-code";
 
@@ -324,29 +325,26 @@ export function MedTechLabForm({
 
           <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <label className="min-w-0 flex-1">
-                <FieldLabel required>เลือกผู้ป่วยที่รอผลตรวจ</FieldLabel>
-                <select
-                  name="nurseInterviewId"
-                  required
-                  value={selectedInterviewId}
-                  onChange={(event) => {
-                    setSelectedInterviewId(event.target.value);
-                    setSaveState({ status: "idle" });
-                  }}
-                  disabled={interviews.length === 0}
-                  className={fieldClass}
-                >
-                  <option value="" disabled>
-                    {interviews.length === 0 ? "ยังไม่มีผู้ป่วยที่ส่งมาจากห้องพยาบาล" : "เลือกผู้ป่วย"}
-                  </option>
-                  {interviews.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      รหัสผู้ป่วย {formatPatientCode(item.queueNumber)}: {item.patientPrefix}{item.patientFirstName} {item.patientLastName} · {item.age} ปี · {item.gender}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <AppSelect
+                isRequired
+                fullWidth
+                tone="indigo"
+                className="min-w-0 flex-1"
+                name="nurseInterviewId"
+                label="เลือกผู้ป่วยที่รอผลตรวจ"
+                placeholder="เลือกผู้ป่วย"
+                emptyText="ยังไม่มีผู้ป่วยที่ส่งมาจากห้องพยาบาล"
+                options={interviews.map((item) => ({
+                  value: item.id,
+                  label: `รหัสผู้ป่วย ${formatPatientCode(item.queueNumber)}: ${item.patientPrefix}${item.patientFirstName} ${item.patientLastName} · ${item.age} ปี · ${item.gender}`,
+                }))}
+                value={selectedInterviewId}
+                onChange={(id) => {
+                  setSelectedInterviewId(id);
+                  setSaveState({ status: "idle" });
+                }}
+                isDisabled={interviews.length === 0}
+              />
               <button
                 type="button"
                 onClick={refreshQueue}

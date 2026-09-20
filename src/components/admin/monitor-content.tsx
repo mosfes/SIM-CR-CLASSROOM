@@ -23,6 +23,7 @@ import {
   XCircle,
   Printer,
 } from "lucide-react";
+import { AppSelect } from "@/components/ui/app-select";
 import { downloadElementAsPdf } from "@/lib/pdf-export";
 import { formatPatientCode } from "@/lib/patient-code";
 
@@ -611,25 +612,20 @@ export function MonitorContent({
 
           {/* Classroom Selector */}
           <div className="flex w-full min-w-0 flex-col gap-2 md:w-auto md:shrink-0 md:flex-row md:items-center">
-            <label htmlFor="classroom-select" className="shrink-0 text-xs font-semibold text-slate-600">
-              เลือกห้องเรียน:
-            </label>
-            <select
-              id="classroom-select"
+            <span className="shrink-0 text-xs font-semibold text-slate-600">เลือกห้องเรียน:</span>
+            <AppSelect
+              size="filter"
+              className="w-full min-w-0 md:w-72"
+              ariaLabel="เลือกห้องเรียน"
+              placeholder="เลือกห้องเรียน"
+              options={classrooms.map((c) => ({ value: c.id, label: c.name }))}
               value={selectedClassroomId}
-              onChange={(e) => {
-                setSelectedClassroomId(e.target.value);
+              onChange={(id) => {
+                setSelectedClassroomId(id);
                 setSelectedGroupId("ALL");
                 setCurrentPage(1);
               }}
-              className="w-full min-w-0 max-w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2 text-xs font-bold text-slate-900 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/15 md:w-72"
-            >
-              {classrooms.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         </div>
 
@@ -751,40 +747,46 @@ export function MonitorContent({
           {/* Stage Filter */}
           <div className="flex items-center gap-1 text-xs">
             <span className="text-slate-400 font-semibold">สถานะ:</span>
-            <select
+            <AppSelect
+              size="compact"
+              className="w-40"
+              ariaLabel="กรองตามสถานะ"
+              options={[
+                { value: "ALL", label: "ทุกสถานะ" },
+                { value: "WAITING_NURSE", label: "รอซักประวัติ" },
+                { value: "WAITING_LAB", label: "รอผลแล็บ" },
+                { value: "WAITING_DOCTOR", label: "รอตรวจวินิจฉัย" },
+                { value: "WAITING_PHARMACY", label: "รอจ่ายยา" },
+                { value: "COMPLETED", label: "เสร็จสิ้น" },
+              ]}
               value={stageFilter}
-              onChange={(e) => {
-                setStageFilter(e.target.value);
+              onChange={(value) => {
+                setStageFilter(value);
                 setCurrentPage(1);
               }}
-              className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700"
-            >
-              <option value="ALL">ทุกสถานะ</option>
-              <option value="WAITING_NURSE">รอซักประวัติ</option>
-              <option value="WAITING_LAB">รอผลแล็บ</option>
-              <option value="WAITING_DOCTOR">รอตรวจวินิจฉัย</option>
-              <option value="WAITING_PHARMACY">รอจ่ายยา</option>
-              <option value="COMPLETED">เสร็จสิ้น</option>
-            </select>
+            />
           </div>
 
           {/* Evaluation Filter */}
           <div className="flex items-center gap-1 text-xs">
             <span className="text-slate-400 font-semibold">ผลวินิจฉัย:</span>
-            <select
+            <AppSelect
+              size="compact"
+              className="w-56"
+              ariaLabel="กรองตามผลวินิจฉัย"
+              options={[
+                { value: "ALL", label: "ทั้งหมด" },
+                { value: "CORRECT", label: "วินิจฉัยถูกต้อง (ตรงเฉลย)" },
+                { value: "INCORRECT", label: "วินิจฉัยไม่ตรงเฉลย" },
+                { value: "PENDING", label: "ยังไม่วินิจฉัย" },
+                { value: "NO_KEY", label: "ไม่มีเฉลย" },
+              ]}
               value={evalFilter}
-              onChange={(e) => {
-                setEvalFilter(e.target.value);
+              onChange={(value) => {
+                setEvalFilter(value);
                 setCurrentPage(1);
               }}
-              className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700"
-            >
-              <option value="ALL">ทั้งหมด</option>
-              <option value="CORRECT">วินิจฉัยถูกต้อง (ตรงเฉลย)</option>
-              <option value="INCORRECT">วินิจฉัยไม่ตรงเฉลย</option>
-              <option value="PENDING">ยังไม่วินิจฉัย</option>
-              <option value="NO_KEY">ไม่มีเฉลย</option>
-            </select>
+            />
           </div>
         </div>
 
@@ -1284,22 +1286,22 @@ export function MonitorContent({
                 <span className="text-slate-300 hidden sm:inline">|</span>
 
                 <div className="flex items-center gap-1.5">
-                  <label htmlFor="items-per-page" className="text-slate-500 font-medium">
-                    แสดงหน้าละ:
-                  </label>
-                  <select
-                    id="items-per-page"
-                    value={itemsPerPage}
-                    onChange={(e) => {
-                      setItemsPerPage(Number(e.target.value));
+                  <span className="text-slate-500 font-medium">แสดงหน้าละ:</span>
+                  <AppSelect
+                    size="compact"
+                    className="w-28"
+                    ariaLabel="จำนวนคิวต่อหน้า"
+                    options={[
+                      { value: "10", label: "10 คิว" },
+                      { value: "20", label: "20 คิว" },
+                      { value: "50", label: "50 คิว" },
+                    ]}
+                    value={String(itemsPerPage)}
+                    onChange={(value) => {
+                      setItemsPerPage(Number(value));
                       setCurrentPage(1);
                     }}
-                    className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-red-500 cursor-pointer"
-                  >
-                    <option value={10}>10 คิว</option>
-                    <option value={20}>20 คิว</option>
-                    <option value={50}>50 คิว</option>
-                  </select>
+                  />
                 </div>
               </div>
 

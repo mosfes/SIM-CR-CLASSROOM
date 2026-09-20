@@ -15,6 +15,7 @@ import {
   Square,
   Users,
 } from "lucide-react";
+import { AppSelect } from "@/components/ui/app-select";
 import { getPlayRole, type PlayRoleId } from "@/lib/play/roles";
 import type { GroupResults } from "@/components/projector/results-summary";
 import { SimulationResultsSummary } from "@/components/admin/simulation-results-summary";
@@ -254,10 +255,16 @@ export function SimulationsContent() {
             <p className="mt-1 text-xs text-slate-500">เลือกห้องเรียนเพียงครั้งเดียว นักเรียนจะใช้เลขห้องเข้าร่วม แล้วเลือกห้องตรวจและบทบาทด้วยตนเอง</p>
           </div>
           <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-            <label className="sr-only" htmlFor="simulation-classroom">ห้องเรียน</label>
-            <select id="simulation-classroom" value={selectedClassroomId} onChange={(event) => setSelectedClassroomId(event.target.value)} disabled={loading || creating} className="h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-red-400 focus:ring-4 focus:ring-red-500/10">
-              {classrooms.length === 0 ? <option value="">ยังไม่มีห้องเรียนที่พร้อมใช้</option> : classrooms.map((classroom) => <option key={classroom.id} value={classroom.id}>{classroom.name}</option>)}
-            </select>
+            <AppSelect
+              fullWidth
+              className="min-w-0"
+              ariaLabel="ห้องเรียน"
+              emptyText="ยังไม่มีห้องเรียนที่พร้อมใช้"
+              options={classrooms.map((classroom) => ({ value: classroom.id, label: classroom.name }))}
+              value={selectedClassroomId}
+              onChange={setSelectedClassroomId}
+              isDisabled={loading || creating}
+            />
             <button type="button" onClick={handleCreate} disabled={!selectedClassroom || creating || loading} className="inline-flex h-11 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-red-600 px-4 text-sm font-bold text-white shadow-md shadow-red-500/20 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
               {creating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               {creating ? "กำลังสร้าง..." : "สร้างและสุ่มเลขห้อง"}

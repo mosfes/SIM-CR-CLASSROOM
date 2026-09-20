@@ -13,6 +13,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import { AppSelect } from "@/components/ui/app-select";
 import { playClick, playSuccess } from "@/lib/play/sound";
 import { formatPatientCode } from "@/lib/patient-code";
 
@@ -36,6 +37,10 @@ type SaveState =
   | { status: "success"; recordId: string; queueNumber?: number | null; patientName: string }
   | { status: "error"; message: string };
 
+const PREFIX_OPTIONS = ["นาย", "นาง", "นางสาว", "เด็กชาย", "เด็กหญิง", "อื่น ๆ"].map((value) => ({ value, label: value }));
+const GENDER_OPTIONS = ["ชาย", "หญิง", "ไม่ระบุ"].map((value) => ({ value, label: value }));
+const MARITAL_OPTIONS = ["โสด", "คู่", "หม้าย", "หย่าร้าง", "แยกกันอยู่"].map((value) => ({ value, label: value }));
+
 const fieldClass =
   "mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-base font-medium text-slate-900 outline-none transition placeholder:text-slate-300 hover:border-amber-300 focus:border-amber-500 focus:ring-4 focus:ring-amber-100";
 
@@ -51,6 +56,9 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 export function PatientCardForm({ clerk, classroom, group, simulationId, diseases = [] }: PatientCardFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
+  const [patientPrefix, setPatientPrefix] = useState("");
+  const [gender, setGender] = useState("");
+  const [maritalStatus, setMaritalStatus] = useState("");
 
   // Searchable disease dropdown state
   const [selectedDiseaseCode, setSelectedDiseaseCode] = useState("");
@@ -102,12 +110,12 @@ export function PatientCardForm({ clerk, classroom, group, simulationId, disease
       classroomId: classroom.id,
       groupId: group.id,
       simulationId,
-      patientPrefix: formData.get("patientPrefix"),
+      patientPrefix,
       patientFirstName: formData.get("patientFirstName"),
       patientLastName: formData.get("patientLastName"),
       age: formData.get("age"),
-      gender: formData.get("gender"),
-      maritalStatus: formData.get("maritalStatus"),
+      gender,
+      maritalStatus,
       diseaseCode,
     };
 
@@ -124,6 +132,9 @@ export function PatientCardForm({ clerk, classroom, group, simulationId, disease
 
       playSuccess();
       formRef.current?.reset();
+      setPatientPrefix("");
+      setGender("");
+      setMaritalStatus("");
       setSelectedDiseaseCode("");
       setSearchDiseaseTerm("");
       setIsDiseaseDropdownOpen(false);
@@ -145,6 +156,9 @@ export function PatientCardForm({ clerk, classroom, group, simulationId, disease
   function handleReset() {
     playClick();
     formRef.current?.reset();
+    setPatientPrefix("");
+    setGender("");
+    setMaritalStatus("");
     setSelectedDiseaseCode("");
     setSearchDiseaseTerm("");
     setIsDiseaseDropdownOpen(false);
@@ -201,39 +215,48 @@ export function PatientCardForm({ clerk, classroom, group, simulationId, disease
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-12">
-            <label className="lg:col-span-2">
-              <FieldLabel>คำนำหน้า</FieldLabel>
-              <select name="patientPrefix" required defaultValue="" className={fieldClass}>
-                <option value="" disabled>เลือก</option>
-                <option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option><option>อื่น ๆ</option>
-              </select>
-            </label>
+            <AppSelect
+              isRequired
+              fullWidth
+              tone="amber"
+              className="lg:col-span-2"
+              name="patientPrefix"
+              label="คำนำหน้า"
+              placeholder="เลือก"
+              options={PREFIX_OPTIONS}
+              value={patientPrefix}
+              onChange={setPatientPrefix}
+            />
             <label className="lg:col-span-4"><FieldLabel>ชื่อ</FieldLabel><input name="patientFirstName" required maxLength={191} autoComplete="given-name" className={fieldClass} placeholder="ชื่อผู้ป่วย" /></label>
             <label className="lg:col-span-4"><FieldLabel>นามสกุล</FieldLabel><input name="patientLastName" required maxLength={191} autoComplete="family-name" className={fieldClass} placeholder="นามสกุลผู้ป่วย" /></label>
             <label className="lg:col-span-2">
               <FieldLabel>อายุ</FieldLabel>
               <div className="relative"><input name="age" type="number" required min="0" max="130" inputMode="numeric" className={`${fieldClass} pr-10`} placeholder="0" /><span className="pointer-events-none absolute right-3 top-1/2 translate-y-[-30%] text-sm font-bold text-slate-400">ปี</span></div>
             </label>
-            <label className="lg:col-span-4">
-              <FieldLabel>เพศ</FieldLabel>
-              <select name="gender" required defaultValue="" className={fieldClass}>
-                <option value="" disabled>เลือก</option>
-                <option value="ชาย">ชาย</option>
-                <option value="หญิง">หญิง</option>
-                <option value="ไม่ระบุ">ไม่ระบุ</option>
-              </select>
-            </label>
-            <label className="lg:col-span-4">
-              <FieldLabel>สถานภาพ</FieldLabel>
-              <select name="maritalStatus" required defaultValue="" className={fieldClass}>
-                <option value="" disabled>เลือก</option>
-                <option value="โสด">โสด</option>
-                <option value="คู่">คู่</option>
-                <option value="หม้าย">หม้าย</option>
-                <option value="หย่าร้าง">หย่าร้าง</option>
-                <option value="แยกกันอยู่">แยกกันอยู่</option>
-              </select>
-            </label>
+            <AppSelect
+              isRequired
+              fullWidth
+              tone="amber"
+              className="lg:col-span-4"
+              name="gender"
+              label="เพศ"
+              placeholder="เลือก"
+              options={GENDER_OPTIONS}
+              value={gender}
+              onChange={setGender}
+            />
+            <AppSelect
+              isRequired
+              fullWidth
+              tone="amber"
+              className="lg:col-span-4"
+              name="maritalStatus"
+              label="สถานภาพ"
+              placeholder="เลือก"
+              options={MARITAL_OPTIONS}
+              value={maritalStatus}
+              onChange={setMaritalStatus}
+            />
             <div className="lg:col-span-4" ref={diseaseDropdownRef}>
               <FieldLabel>รหัสโรค</FieldLabel>
               <div className="relative mt-1.5">

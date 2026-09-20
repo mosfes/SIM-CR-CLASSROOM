@@ -14,6 +14,7 @@ import {
   Stethoscope,
   UserRound,
 } from "lucide-react";
+import { AppSelect } from "@/components/ui/app-select";
 import { playClick, playSuccess } from "@/lib/play/sound";
 import { formatPatientCode } from "@/lib/patient-code";
 
@@ -262,29 +263,26 @@ export function NurseInterviewForm({
 
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <label className="min-w-0 flex-1">
-                <FieldLabel required>เลือกบัตรผู้ป่วยที่รอซักประวัติ</FieldLabel>
-                <select
-                  name="patientCardId"
-                  required
-                  value={selectedPatientCardId}
-                  onChange={(event) => {
-                    setSelectedPatientCardId(event.target.value);
-                    setSaveState({ status: "idle" });
-                  }}
-                  disabled={patientCards.length === 0}
-                  className={fieldClass}
-                >
-                  <option value="" disabled>
-                    {patientCards.length === 0 ? "ยังไม่มีบัตรผู้ป่วยจากห้องบัตร" : "เลือกผู้ป่วย"}
-                  </option>
-                  {patientCards.map((card) => (
-                    <option key={card.id} value={card.id}>
-                      รหัสผู้ป่วย {formatPatientCode(card.queueNumber)}: {card.patientPrefix}{card.patientFirstName} {card.patientLastName} · {card.age} ปี · {card.gender} · {card.maritalStatus}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <AppSelect
+                isRequired
+                fullWidth
+                tone="emerald"
+                className="min-w-0 flex-1"
+                name="patientCardId"
+                label="เลือกบัตรผู้ป่วยที่รอซักประวัติ"
+                placeholder="เลือกผู้ป่วย"
+                emptyText="ยังไม่มีบัตรผู้ป่วยจากห้องบัตร"
+                options={patientCards.map((item) => ({
+                  value: item.id,
+                  label: `รหัสผู้ป่วย ${formatPatientCode(item.queueNumber)}: ${item.patientPrefix}${item.patientFirstName} ${item.patientLastName} · ${item.age} ปี · ${item.gender} · ${item.maritalStatus}`,
+                }))}
+                value={selectedPatientCardId}
+                onChange={(id) => {
+                  setSelectedPatientCardId(id);
+                  setSaveState({ status: "idle" });
+                }}
+                isDisabled={patientCards.length === 0}
+              />
               <button
                 type="button"
                 onClick={refreshPatientCards}

@@ -11,12 +11,12 @@ import {
   RefreshCw,
   X,
   AlertTriangle,
-  ChevronDown,
   ChevronRight,
   ChevronLeft,
   CheckCircle2,
   Clock,
 } from "lucide-react";
+import { AppSelect } from "@/components/ui/app-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClassroomsGridSkeleton } from "@/components/admin/skeleton-loaders";
 import {
@@ -414,23 +414,22 @@ export function ClassroomsContent({
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-xs font-normal text-slate-700 focus:border-red-500 focus:outline-none cursor-pointer"
-            >
-              <option value="ALL">ทุกสถานะ</option>
-              <option value="ACTIVE">เปิดใช้งาน</option>
-              <option value="INACTIVE">ปิดใช้งาน</option>
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400">
-              <ChevronDown className="h-3.5 w-3.5" />
-            </div>
-          </div>
+          <AppSelect
+            size="filter"
+            rounded="xl"
+            className="w-40"
+            ariaLabel="กรองตามสถานะ"
+            options={[
+              { value: "ALL", label: "ทุกสถานะ" },
+              { value: "ACTIVE", label: "เปิดใช้งาน" },
+              { value: "INACTIVE", label: "ปิดใช้งาน" },
+            ]}
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              setCurrentPage(1);
+            }}
+          />
 
           <button
             type="button"
