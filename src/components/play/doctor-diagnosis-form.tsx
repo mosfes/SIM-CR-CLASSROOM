@@ -22,6 +22,7 @@ import type { DiseaseLabResult } from "@/lib/disease-lab-results";
 import { AppSelect } from "@/components/ui/app-select";
 import { playClick, playSuccess } from "@/lib/play/sound";
 import { formatPatientCode } from "@/lib/patient-code";
+import { NurseAnalysisCard } from "@/components/play/nurse-analysis-card";
 
 export interface NurseInterviewOption {
   id: string;
@@ -44,6 +45,8 @@ export interface NurseInterviewOption {
   chiefComplaint: string | null;
   symptomDescription: string;
   notes: string | null;
+  endocrineGlandChoice?: string | null;
+  abnormalHormoneChoice?: string | null;
   createdAt: string;
   labResult: {
     id: string;
@@ -430,6 +433,12 @@ export function DoctorDiagnosisForm({
                     {selectedInterview.symptomDescription}
                   </p>
                 </div>
+
+                <NurseAnalysisCard
+                  gland={selectedInterview.endocrineGlandChoice}
+                  hormone={selectedInterview.abnormalHormoneChoice}
+                  tone="sky"
+                />
 
                 {selectedInterview.notes && (
                   <div className="rounded-xl border border-dashed border-sky-200 bg-white/80 px-4 py-2.5 text-xs font-medium text-slate-600">

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { playClick, playSuccess } from "@/lib/play/sound";
 import { formatPatientCode } from "@/lib/patient-code";
+import { NurseAnalysisCard } from "@/components/play/nurse-analysis-card";
 import { PHARMACY_MAX_SCORE, type PharmacyChoiceOption } from "@/lib/pharmacy-choices";
 
 export interface DoctorDiagnosisOption {
@@ -45,6 +46,8 @@ export interface DoctorDiagnosisOption {
   chiefComplaint?: string | null;
   symptomDescription?: string | null;
   nurseNotes?: string | null;
+  endocrineGlandChoice?: string | null;
+  abnormalHormoneChoice?: string | null;
   labResult?: {
     id: string;
     medTechName: string;
@@ -417,6 +420,12 @@ export function PharmacistDispenseForm({
                     </div>
                   </div>
                 </div>
+
+                <NurseAnalysisCard
+                  gland={selectedDiagnosis.endocrineGlandChoice}
+                  hormone={selectedDiagnosis.abnormalHormoneChoice}
+                  tone="teal"
+                />
 
                 {/* Lab results from the med tech */}
                 <div className="rounded-2xl border border-indigo-200 bg-white p-4 shadow-sm">

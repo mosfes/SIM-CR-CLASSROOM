@@ -149,6 +149,9 @@ export const nurseInterviewCaseSelect = {
   chiefComplaint: true,
   symptomDescription: true,
   notes: true,
+  // คำตอบต่อมไร้ท่อ/ฮอร์โมนของพยาบาล ส่งต่อให้เทคนิคการแพทย์และแพทย์ (ไม่ส่งผลถูก/ผิดหรือเฉลย)
+  endocrineGlandChoice: true,
+  abnormalHormoneChoice: true,
   createdAt: true,
 } as const;
 
@@ -366,6 +369,8 @@ export async function getAvailableDoctorDiagnoses(
           chiefComplaint: true,
           symptomDescription: true,
           notes: true,
+          endocrineGlandChoice: true,
+          abnormalHormoneChoice: true,
         },
       },
       // เภสัชกรต้องอ่านผลตรวจดิบเอง จึงไม่ส่งชื่อ/รหัสชุดตรวจที่เทคนิคการแพทย์เลือก
@@ -406,6 +411,8 @@ export async function getAvailableDoctorDiagnoses(
       chiefComplaint: nurseInterview?.chiefComplaint ?? null,
       symptomDescription: nurseInterview?.symptomDescription ?? null,
       nurseNotes: nurseInterview?.notes ?? null,
+      endocrineGlandChoice: nurseInterview?.endocrineGlandChoice ?? null,
+      abnormalHormoneChoice: nurseInterview?.abnormalHormoneChoice ?? null,
     };
   });
 }

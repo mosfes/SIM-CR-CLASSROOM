@@ -19,6 +19,7 @@ import type { DiseaseLabResult } from "@/lib/disease-lab-results";
 import { AppSelect } from "@/components/ui/app-select";
 import { playClick, playSuccess } from "@/lib/play/sound";
 import { formatPatientCode } from "@/lib/patient-code";
+import { NurseAnalysisCard } from "@/components/play/nurse-analysis-card";
 
 export interface LabQueueOption {
   id: string;
@@ -41,6 +42,8 @@ export interface LabQueueOption {
   chiefComplaint: string | null;
   symptomDescription: string;
   notes: string | null;
+  endocrineGlandChoice?: string | null;
+  abnormalHormoneChoice?: string | null;
   createdAt: string;
 }
 
@@ -429,6 +432,12 @@ export function MedTechLabForm({
                     {selectedInterview.symptomDescription}
                   </p>
                 </div>
+
+                <NurseAnalysisCard
+                  gland={selectedInterview.endocrineGlandChoice}
+                  hormone={selectedInterview.abnormalHormoneChoice}
+                  tone="indigo"
+                />
 
                 {selectedInterview.notes && (
                   <div className="rounded-xl border border-dashed border-indigo-200 bg-white/80 px-4 py-2.5 text-xs font-medium text-slate-600">
