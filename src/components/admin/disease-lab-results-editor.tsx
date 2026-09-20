@@ -144,3 +144,97 @@ export function DiseaseLabResultsTable({ rows }: { rows: DiseaseLabResult[] }) {
     </div>
   );
 }
+
+/**
+ * ตัวเลือกของสถานีห้องยาที่ผูกกับโรคนี้:
+ * ความผิดปกติของฮอร์โมน (A-U) และยา/การรักษา (ก-ธ) ตามใบงาน
+ * ทั้งสองช่องต้องกรอกคู่กัน หรือเว้นว่างทั้งคู่เมื่อโรคนี้ยังไม่มีเฉลย
+ */
+export function DiseasePharmacyChoicesEditor({
+  namePrefix,
+  hormoneKey,
+  hormoneLabel,
+  treatmentKey,
+  treatmentLabel,
+  onChange,
+  disabled = false,
+}: {
+  namePrefix: string;
+  hormoneKey: string;
+  hormoneLabel: string;
+  treatmentKey: string;
+  treatmentLabel: string;
+  onChange: (field: "hormoneKey" | "hormoneLabel" | "treatmentKey" | "treatmentLabel", value: string) => void;
+  disabled?: boolean;
+}) {
+  const inputClass =
+    "w-full rounded-xl border border-slate-200 py-2 px-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:outline-none focus:ring-3 focus:ring-red-500/10 disabled:bg-slate-50";
+
+  return (
+    <div className="space-y-3 rounded-xl border border-fuchsia-200 bg-fuchsia-50/40 p-3">
+      <div className="grid gap-2 sm:grid-cols-[5rem_1fr]">
+        <div>
+          <label className="mb-1 block text-[10px] font-semibold text-slate-600">ตัวอักษร (A-U)</label>
+          <input
+            type="text"
+            maxLength={8}
+            name={`${namePrefix}_hormone_choice_key`}
+            autoComplete="off"
+            placeholder="A"
+            value={hormoneKey}
+            disabled={disabled}
+            onChange={(e) => onChange("hormoneKey", e.target.value)}
+            className={`${inputClass} text-center font-mono font-bold`}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-semibold text-slate-600">
+            ความผิดปกติของฮอร์โมน
+          </label>
+          <input
+            type="text"
+            maxLength={191}
+            name={`${namePrefix}_hormone_choice_label`}
+            autoComplete="off"
+            placeholder="เช่น Ca²⁺ ↓"
+            value={hormoneLabel}
+            disabled={disabled}
+            onChange={(e) => onChange("hormoneLabel", e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-[5rem_1fr]">
+        <div>
+          <label className="mb-1 block text-[10px] font-semibold text-slate-600">ตัวอักษร (ก-ธ)</label>
+          <input
+            type="text"
+            maxLength={8}
+            name={`${namePrefix}_treatment_choice_key`}
+            autoComplete="off"
+            placeholder="ก"
+            value={treatmentKey}
+            disabled={disabled}
+            onChange={(e) => onChange("treatmentKey", e.target.value)}
+            className={`${inputClass} text-center font-mono font-bold`}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-semibold text-slate-600">ยา/การรักษา</label>
+          <textarea
+            rows={2}
+            maxLength={2000}
+            name={`${namePrefix}_treatment_choice_label`}
+            autoComplete="off"
+            placeholder="เช่น Calcium gluconate, Calcium carbonate, Vitamin D / Calcitriol"
+            value={treatmentLabel}
+            disabled={disabled}
+            onChange={(e) => onChange("treatmentLabel", e.target.value)}
+            className={`${inputClass} resize-y leading-relaxed`}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

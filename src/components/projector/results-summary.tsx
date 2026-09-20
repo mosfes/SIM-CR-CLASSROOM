@@ -9,8 +9,13 @@ export interface GroupResults {
   labCorrectCount: number;
   labWrongCount: number;
   labSuccessRate: number;
+  pharmacyCount: number;
+  pharmacyCorrectCount: number;
+  pharmacyWrongCount: number;
+  pharmacySuccessRate: number;
   doctorScore: number;
   labScore: number;
+  pharmacyScore: number;
   totalScore: number;
   topScorers: Array<{ studentId: string; name: string; score: number }>;
 }
@@ -123,6 +128,9 @@ export function GroupScoreLeaderboard({
     labCorrectCount: number;
     labWrongCount: number;
     labScore: number;
+    pharmacyCorrectCount: number;
+    pharmacyWrongCount: number;
+    pharmacyScore: number;
     accentBadge: string;
   }>;
   themeStyles: ResultsSummaryTheme;
@@ -156,6 +164,10 @@ export function GroupScoreLeaderboard({
               เทคนิคการแพทย์: ถูก <span style={{ color: CHART_CORRECT_COLOR }}>{bar.labCorrectCount}</span> ผิด{" "}
               <span style={{ color: CHART_WRONG_COLOR }}>{bar.labWrongCount}</span> · {bar.labScore} คะแนน
             </span>
+            <span>
+              เภสัชกร: ถูกครบ <span style={{ color: CHART_CORRECT_COLOR }}>{bar.pharmacyCorrectCount}</span> ไม่ครบ{" "}
+              <span style={{ color: CHART_WRONG_COLOR }}>{bar.pharmacyWrongCount}</span> · {bar.pharmacyScore} คะแนน
+            </span>
           </div>
         </div>
       ))}
@@ -172,7 +184,7 @@ export function GroupResultsSummaryCard({
 }) {
   return (
     <div className="mt-5 space-y-4">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <div className="rounded-2xl bg-amber-400 px-2 py-3 text-center text-amber-950">
           <p className="text-[10px] font-bold uppercase tracking-wide text-amber-950/70">คะแนนรวมทีม</p>
           <p className="mt-1 text-2xl font-black">{results.totalScore}</p>
@@ -184,6 +196,10 @@ export function GroupResultsSummaryCard({
         <div className={`rounded-2xl px-2 py-3 text-center ${themeStyles.stat}`}>
           <p className={`text-[10px] font-bold uppercase tracking-wide ${themeStyles.secondary}`}>เทคนิคการแพทย์</p>
           <p className="mt-1 text-2xl font-black">{results.labScore}</p>
+        </div>
+        <div className={`rounded-2xl px-2 py-3 text-center ${themeStyles.stat}`}>
+          <p className={`text-[10px] font-bold uppercase tracking-wide ${themeStyles.secondary}`}>เภสัชกร</p>
+          <p className="mt-1 text-2xl font-black">{results.pharmacyScore}</p>
         </div>
       </div>
 

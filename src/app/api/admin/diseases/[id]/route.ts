@@ -3,6 +3,11 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { authorizeAdminRequest } from "@/lib/server/admin-api";
 import { normalizeLabResultsInput, parseLabResults } from "@/lib/disease-lab-results";
+import {
+  PHARMACY_HORMONE_LABEL_MAX_LENGTH,
+  PHARMACY_TREATMENT_LABEL_MAX_LENGTH,
+  normalizePharmacyChoiceInput,
+} from "@/lib/pharmacy-choices";
 
 export async function GET(
   request: NextRequest,
@@ -73,6 +78,10 @@ export async function PUT(
       name?: string;
       symptoms?: string;
       labResults?: Prisma.InputJsonValue;
+      hormoneChoiceKey?: string | null;
+      hormoneChoiceLabel?: string | null;
+      treatmentChoiceKey?: string | null;
+      treatmentChoiceLabel?: string | null;
       isActive?: boolean;
     } = {};
 
@@ -137,6 +146,53 @@ export async function PUT(
               error instanceof Error
                 ? error.message
                 : "ข้อมูลผลตรวจทางห้องปฏิบัติการไม่ถูกต้อง",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // ตัวเลือกของห้องยาส่งมาเป็นคู่เสมอ (ตัวอักษร + ข้อความ) เว้นว่างทั้งคู่ = ล้างเฉลยของโรคนี้
+    if (body.hormoneChoiceKey !== undefined || body.hormoneChoiceLabel !== undefined) {
+      try {
+        const hormone = normalizePharmacyChoiceInput(
+          body.hormoneChoiceKey,
+          body.hormoneChoiceLabel,
+          {
+            fieldLabel: "ตัวเลือกความผิดปกติของฮอร์โมน (A-U)",
+            labelMaxLength: PHARMACY_HORMONE_LABEL_MAX_LENGTH,
+          }
+        );
+        dataToUpdate.hormoneChoiceKey = hormone.key;
+        dataToUpdate.hormoneChoiceLabel = hormone.label;
+      } catch (error) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: error instanceof Error ? error.message : "ข้อมูลตัวเลือกของห้องยาไม่ถูกต้อง",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (body.treatmentChoiceKey !== undefined || body.treatmentChoiceLabel !== undefined) {
+      try {
+        const treatment = normalizePharmacyChoiceInput(
+          body.treatmentChoiceKey,
+          body.treatmentChoiceLabel,
+          {
+            fieldLabel: "ตัวเลือกยา/การรักษา (ก-ธ)",
+            labelMaxLength: PHARMACY_TREATMENT_LABEL_MAX_LENGTH,
+          }
+        );
+        dataToUpdate.treatmentChoiceKey = treatment.key;
+        dataToUpdate.treatmentChoiceLabel = treatment.label;
+      } catch (error) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: error instanceof Error ? error.message : "ข้อมูลตัวเลือกของห้องยาไม่ถูกต้อง",
           },
           { status: 400 }
         );

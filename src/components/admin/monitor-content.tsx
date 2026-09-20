@@ -112,7 +112,15 @@ interface SubmissionItem {
     id: string;
     pharmacistName: string;
     medicines: unknown;
-    totalTablets: number;
+    totalTablets: number | null;
+    hormoneChoiceKey: string | null;
+    hormoneChoiceLabel: string | null;
+    treatmentChoiceKey: string | null;
+    treatmentChoiceLabel: string | null;
+    isHormoneCorrect: boolean | null;
+    isTreatmentCorrect: boolean | null;
+    isCorrect: boolean | null;
+    evaluationScore: number | null;
     createdAt: string;
   } | null;
 }
@@ -168,7 +176,13 @@ interface SubmissionListItem {
   pharmacy: {
     id: string;
     pharmacistName: string;
-    totalTablets: number;
+    totalTablets: number | null;
+    hormoneChoiceKey: string | null;
+    treatmentChoiceKey: string | null;
+    isHormoneCorrect: boolean | null;
+    isTreatmentCorrect: boolean | null;
+    isCorrect: boolean | null;
+    evaluationScore: number | null;
     createdAt: string;
   } | null;
 }
@@ -193,9 +207,10 @@ interface Pagination {
 }
 
 const SCORE_MAXIMUMS = {
-  total: 12,
+  total: 15,
   doctor: 10,
   medTech: 2,
+  pharmacist: 3,
 } as const;
 
 function formatScore(score: number | null | undefined, maximum: number) {
@@ -205,20 +220,21 @@ function formatScore(score: number | null | undefined, maximum: number) {
 function ScoreSummary({
   doctorScore,
   medTechScore,
+  pharmacistScore,
   compact = false,
 }: {
   doctorScore: number | null | undefined;
   medTechScore: number | null | undefined;
+  pharmacistScore: number | null | undefined;
   compact?: boolean;
 }) {
-  const scoredParts = [doctorScore, medTechScore].filter(
+  const scoredParts = [doctorScore, medTechScore, pharmacistScore].filter(
     (score): score is number => typeof score === "number"
   );
 
   if (scoredParts.length === 0) return null;
 
-  const totalScore = (typeof doctorScore === "number" ? doctorScore : 0) +
-    (typeof medTechScore === "number" ? medTechScore : 0);
+  const totalScore = scoredParts.reduce((sum, score) => sum + score, 0);
   const chipClass = compact
     ? "inline-flex items-center gap-1 rounded-lg border bg-white px-2 py-0.5"
     : "inline-flex items-center gap-1 rounded-xl border bg-white px-2.5 py-1.5";
@@ -252,6 +268,12 @@ function ScoreSummary({
           <span>เทคนิคการแพทย์</span>
           <strong className="font-mono">
             {formatScore(medTechScore ?? 0, SCORE_MAXIMUMS.medTech)}
+          </strong>
+        </span>
+        <span className={`${chipClass} border-fuchsia-200 text-fuchsia-800`}>
+          <span>เภสัชกร</span>
+          <strong className="font-mono">
+            {formatScore(pharmacistScore ?? 0, SCORE_MAXIMUMS.pharmacist)}
           </strong>
         </span>
       </div>
@@ -906,6 +928,7 @@ export function MonitorContent({
                     <ScoreSummary
                       doctorScore={sub.doctor?.evaluationScore}
                       medTechScore={sub.lab?.evaluationScore}
+                      pharmacistScore={sub.pharmacy?.evaluationScore}
                       compact
                     />
 
@@ -1182,12 +1205,55 @@ export function MonitorContent({
                             {sub.pharmacy.pharmacistName}
                           </span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">จ่ายยาทั้งหมด:</span>
-                          <span className="font-bold text-fuchsia-900">
-                            {sub.pharmacy.totalTablets} เม็ด
-                          </span>
-                        </div>
+                        {sub.pharmacy.hormoneChoiceKey ? (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">ฮอร์โมน:</span>
+                              <span
+                                className={`font-bold ${
+                                  sub.pharmacy.isHormoneCorrect ? "text-emerald-700" : "text-rose-600"
+                                }`}
+                              >
+                                {sub.pharmacy.hormoneChoiceKey}
+                                {sub.pharmacy.isHormoneCorrect === true
+                                  ? " ✓"
+                                  : sub.pharmacy.isHormoneCorrect === false
+                                    ? " ✗"
+                                    : ""}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">ยา/การรักษา:</span>
+                              <span
+                                className={`font-bold ${
+                                  sub.pharmacy.isTreatmentCorrect ? "text-emerald-700" : "text-rose-600"
+                                }`}
+                              >
+                                {sub.pharmacy.treatmentChoiceKey}
+                                {sub.pharmacy.isTreatmentCorrect === true
+                                  ? " ✓"
+                                  : sub.pharmacy.isTreatmentCorrect === false
+                                    ? " ✗"
+                                    : ""}
+                              </span>
+                            </div>
+                            {sub.pharmacy.evaluationScore !== null && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">คะแนน:</span>
+                                <span className="font-bold text-fuchsia-900">
+                                  {sub.pharmacy.evaluationScore}/{SCORE_MAXIMUMS.pharmacist}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">จ่ายยาทั้งหมด:</span>
+                            <span className="font-bold text-fuchsia-900">
+                              {sub.pharmacy.totalTablets ?? 0} เม็ด
+                            </span>
+                          </div>
+                        )}
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
                           <CheckCircle2 className="h-3 w-3" /> เสร็จสิ้นการรักษา
                         </span>
@@ -1323,6 +1389,7 @@ export function MonitorContent({
               <ScoreSummary
                 doctorScore={selectedSubmission.doctor?.evaluationScore}
                 medTechScore={selectedSubmission.lab?.evaluationScore}
+                pharmacistScore={selectedSubmission.pharmacy?.evaluationScore}
               />
             </div>
 
@@ -1674,33 +1741,94 @@ export function MonitorContent({
                 </div>
 
                 {selectedSubmission.pharmacy ? (
-                  <div className="space-y-2 text-xs">
-                    <div className="rounded-xl bg-white p-3 border border-fuchsia-100">
-                      <div className="flex items-center justify-between font-bold text-slate-700 border-b border-slate-100 pb-2 mb-2">
-                        <span>รายการยาที่จ่าย</span>
-                        <span>จำนวนเม็ด</span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {Array.isArray(selectedSubmission.pharmacy.medicines) &&
-                          (selectedSubmission.pharmacy.medicines as MedicineItem[]).map((med, idx) => (
-                            <div key={idx} className="flex items-center justify-between">
-                              <span className="font-medium text-slate-800">
-                                {idx + 1}. {med.name}
-                              </span>
-                              <span className="font-bold text-fuchsia-900">
-                                {med.tabletCount} เม็ด
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                      <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between font-bold text-sm">
-                        <span>ยอดรวมยาทั้งหมด:</span>
-                        <span className="text-fuchsia-900">
-                          {selectedSubmission.pharmacy.totalTablets} เม็ด
-                        </span>
+                  selectedSubmission.pharmacy.hormoneChoiceKey ? (
+                    <div className="space-y-2 text-xs">
+                      {(
+                        [
+                          [
+                            "ความผิดปกติของฮอร์โมน (A-U)",
+                            selectedSubmission.pharmacy.hormoneChoiceKey,
+                            selectedSubmission.pharmacy.hormoneChoiceLabel,
+                            selectedSubmission.pharmacy.isHormoneCorrect,
+                          ],
+                          [
+                            "ยา/การรักษา (ก-ธ)",
+                            selectedSubmission.pharmacy.treatmentChoiceKey,
+                            selectedSubmission.pharmacy.treatmentChoiceLabel,
+                            selectedSubmission.pharmacy.isTreatmentCorrect,
+                          ],
+                        ] as const
+                      ).map(([heading, choiceKey, choiceLabel, correct]) => (
+                        <div
+                          key={heading}
+                          className={`rounded-xl border p-3 ${
+                            correct === true
+                              ? "border-emerald-200 bg-emerald-50/60"
+                              : correct === false
+                                ? "border-rose-200 bg-rose-50/60"
+                                : "border-slate-200 bg-white"
+                          }`}
+                        >
+                          <div className="mb-1 flex items-center justify-between">
+                            <span className="font-bold text-slate-500">{heading}</span>
+                            <span
+                              className={`font-bold ${
+                                correct === true
+                                  ? "text-emerald-700"
+                                  : correct === false
+                                    ? "text-rose-600"
+                                    : "text-slate-400"
+                              }`}
+                            >
+                              {correct === true ? "ถูกต้อง" : correct === false ? "ไม่ถูกต้อง" : "ไม่มีเฉลย"}
+                            </span>
+                          </div>
+                          <p className="font-semibold text-slate-800">
+                            <span className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded bg-fuchsia-600 text-[10px] font-black text-white">
+                              {choiceKey}
+                            </span>
+                            {choiceLabel}
+                          </p>
+                        </div>
+                      ))}
+                      {selectedSubmission.pharmacy.evaluationScore !== null && (
+                        <div className="flex items-center justify-between rounded-xl border border-fuchsia-100 bg-white p-3 text-sm font-bold">
+                          <span>คะแนนสถานีห้องยา:</span>
+                          <span className="text-fuchsia-900">
+                            {selectedSubmission.pharmacy.evaluationScore}/{SCORE_MAXIMUMS.pharmacist}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2 text-xs">
+                      <div className="rounded-xl bg-white p-3 border border-fuchsia-100">
+                        <div className="flex items-center justify-between font-bold text-slate-700 border-b border-slate-100 pb-2 mb-2">
+                          <span>รายการยาที่จ่าย</span>
+                          <span>จำนวนเม็ด</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {Array.isArray(selectedSubmission.pharmacy.medicines) &&
+                            (selectedSubmission.pharmacy.medicines as MedicineItem[]).map((med, idx) => (
+                              <div key={idx} className="flex items-center justify-between">
+                                <span className="font-medium text-slate-800">
+                                  {idx + 1}. {med.name}
+                                </span>
+                                <span className="font-bold text-fuchsia-900">
+                                  {med.tabletCount} เม็ด
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                        <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between font-bold text-sm">
+                          <span>ยอดรวมยาทั้งหมด:</span>
+                          <span className="text-fuchsia-900">
+                            {selectedSubmission.pharmacy.totalTablets ?? 0} เม็ด
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )
                 ) : (
                   <p className="text-xs text-slate-400 italic">ยังไม่มีการจ่ายยาจากห้องยา</p>
                 )}

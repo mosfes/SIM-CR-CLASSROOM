@@ -79,6 +79,12 @@ interface ActivityPayload {
     advice?: string;
   }> | null;
   totalTablets?: number | null;
+  hormoneChoiceKey?: string | null;
+  hormoneChoiceLabel?: string | null;
+  treatmentChoiceKey?: string | null;
+  treatmentChoiceLabel?: string | null;
+  isHormoneCorrect?: boolean | null;
+  isTreatmentCorrect?: boolean | null;
 }
 
 interface ActivityItem {
@@ -141,6 +147,9 @@ interface ActivityResponseData {
     pharmacistStats: {
       total: number;
       totalTablets: number;
+      correct: number;
+      accuracyPercent: number;
+      avgScore: number | null;
     };
   };
   activities: ActivityItem[];
@@ -493,13 +502,23 @@ export function StudentActivityModal({ student, onClose }: StudentActivityModalP
                     {data.summary.pharmacistCount}
                   </span>
                   <span className="text-xs text-slate-500 font-normal">เคส</span>
-                  {data.summary.pharmacistStats.totalTablets > 0 && (
+                  {data.summary.pharmacistStats.avgScore !== null ? (
                     <span className="ml-auto text-[11px] font-semibold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded-md">
-                      {data.summary.pharmacistStats.totalTablets} เม็ด
+                      เฉลี่ย {data.summary.pharmacistStats.avgScore}/3
                     </span>
+                  ) : (
+                    data.summary.pharmacistStats.totalTablets > 0 && (
+                      <span className="ml-auto text-[11px] font-semibold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded-md">
+                        {data.summary.pharmacistStats.totalTablets} เม็ด
+                      </span>
+                    )
                   )}
                 </div>
-                <p className="mt-0.5 text-[11px] text-slate-500 truncate">จัดและจ่ายยาตามใบสั่งแพทย์</p>
+                <p className="mt-0.5 text-[11px] text-slate-500 truncate">
+                  {data.summary.pharmacistStats.avgScore !== null
+                    ? `ถูกครบทั้ง 2 ข้อ ${data.summary.pharmacistStats.correct} เคส · แม่นยำ ${data.summary.pharmacistStats.accuracyPercent}%`
+                    : "จัดและจ่ายยาตามใบสั่งแพทย์"}
+                </p>
               </button>
             </div>
           )}
@@ -1032,10 +1051,70 @@ export function StudentActivityModal({ student, onClose }: StudentActivityModalP
                               <span className="font-bold text-slate-900">{act.payload.diseaseName || "-"}</span>
                             </div>
                             <div>
-                              <span className="text-amber-900 font-semibold">ยอดจ่ายยารวม: </span>
-                              <span className="font-bold text-slate-900">{act.payload.totalTablets || 0} เม็ด</span>
+                              <span className="text-amber-900 font-semibold">
+                                {act.payload.hormoneChoiceKey ? "คะแนนห้องยา: " : "ยอดจ่ายยารวม: "}
+                              </span>
+                              <span className="font-bold text-slate-900">
+                                {act.payload.hormoneChoiceKey
+                                  ? `${act.payload.evaluationScore ?? 0}/3 คะแนน`
+                                  : `${act.payload.totalTablets || 0} เม็ด`}
+                              </span>
                             </div>
                           </div>
+
+                          {/* ตัวเลือกตามใบงาน: ฮอร์โมน (A-U) และยา/การรักษา (ก-ธ) */}
+                          {act.payload.hormoneChoiceKey && (
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {(
+                                [
+                                  [
+                                    "ความผิดปกติของฮอร์โมน (A-U)",
+                                    act.payload.hormoneChoiceKey,
+                                    act.payload.hormoneChoiceLabel,
+                                    act.payload.isHormoneCorrect,
+                                  ],
+                                  [
+                                    "ยา/การรักษา (ก-ธ)",
+                                    act.payload.treatmentChoiceKey,
+                                    act.payload.treatmentChoiceLabel,
+                                    act.payload.isTreatmentCorrect,
+                                  ],
+                                ] as const
+                              ).map(([heading, choiceKey, choiceLabel, correct]) => (
+                                <div
+                                  key={heading}
+                                  className={`rounded-xl border p-2.5 text-xs ${
+                                    correct === true
+                                      ? "border-emerald-200 bg-emerald-50/70"
+                                      : correct === false
+                                        ? "border-rose-200 bg-rose-50/70"
+                                        : "border-slate-200 bg-white"
+                                  }`}
+                                >
+                                  <div className="mb-1 flex items-center justify-between">
+                                    <span className="font-semibold text-slate-500">{heading}</span>
+                                    <span
+                                      className={`font-bold ${
+                                        correct === true
+                                          ? "text-emerald-700"
+                                          : correct === false
+                                            ? "text-rose-600"
+                                            : "text-slate-400"
+                                      }`}
+                                    >
+                                      {correct === true ? "ถูก" : correct === false ? "ผิด" : "ไม่มีเฉลย"}
+                                    </span>
+                                  </div>
+                                  <p className="font-medium text-slate-800">
+                                    <span className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded bg-fuchsia-600 text-[10px] font-black text-white">
+                                      {choiceKey}
+                                    </span>
+                                    {choiceLabel}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
 
                           {act.payload.doctorDiagnosisText && (
                             <div className="rounded-xl bg-slate-50 border border-slate-100 p-2.5 text-xs">

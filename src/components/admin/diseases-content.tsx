@@ -25,6 +25,7 @@ import { DiseasesTableSkeleton } from "@/components/admin/skeleton-loaders";
 import {
   DiseaseLabResultsEditor,
   DiseaseLabResultsTable,
+  DiseasePharmacyChoicesEditor,
   emptyLabResultRow,
 } from "@/components/admin/disease-lab-results-editor";
 import { DiseasePrintModal } from "@/components/admin/disease-print-modal";
@@ -36,6 +37,10 @@ interface Disease {
   name: string;
   symptoms: string;
   labResults?: DiseaseLabResult[] | null;
+  hormoneChoiceKey?: string | null;
+  hormoneChoiceLabel?: string | null;
+  treatmentChoiceKey?: string | null;
+  treatmentChoiceLabel?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -78,6 +83,10 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
   const [newName, setNewName] = useState("");
   const [newSymptoms, setNewSymptoms] = useState("");
   const [newLabResults, setNewLabResults] = useState<DiseaseLabResult[]>(blankLabRows);
+  const [newHormoneKey, setNewHormoneKey] = useState("");
+  const [newHormoneLabel, setNewHormoneLabel] = useState("");
+  const [newTreatmentKey, setNewTreatmentKey] = useState("");
+  const [newTreatmentLabel, setNewTreatmentLabel] = useState("");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -87,6 +96,10 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
   const [editName, setEditName] = useState("");
   const [editSymptoms, setEditSymptoms] = useState("");
   const [editLabResults, setEditLabResults] = useState<DiseaseLabResult[]>(blankLabRows);
+  const [editHormoneKey, setEditHormoneKey] = useState("");
+  const [editHormoneLabel, setEditHormoneLabel] = useState("");
+  const [editTreatmentKey, setEditTreatmentKey] = useState("");
+  const [editTreatmentLabel, setEditTreatmentLabel] = useState("");
   const [editIsActive, setEditIsActive] = useState(true);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -97,21 +110,25 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
   // Print / export state
   const [showPrintModal, setShowPrintModal] = useState(false);
 
-  const openAddModal = () => {
+  const resetAddForm = () => {
     setNewCode("");
     setNewName("");
     setNewSymptoms("");
     setNewLabResults(blankLabRows());
+    setNewHormoneKey("");
+    setNewHormoneLabel("");
+    setNewTreatmentKey("");
+    setNewTreatmentLabel("");
     setAddError(null);
+  };
+
+  const openAddModal = () => {
+    resetAddForm();
     setShowAddModal(true);
   };
 
   const closeAddModal = () => {
-    setNewCode("");
-    setNewName("");
-    setNewSymptoms("");
-    setNewLabResults(blankLabRows());
-    setAddError(null);
+    resetAddForm();
     setShowAddModal(false);
   };
 
@@ -122,6 +139,10 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
     setEditName(disease.name);
     setEditSymptoms(disease.symptoms || "");
     setEditLabResults(rows.length > 0 ? rows.map((row) => ({ ...row })) : blankLabRows());
+    setEditHormoneKey(disease.hormoneChoiceKey || "");
+    setEditHormoneLabel(disease.hormoneChoiceLabel || "");
+    setEditTreatmentKey(disease.treatmentChoiceKey || "");
+    setEditTreatmentLabel(disease.treatmentChoiceLabel || "");
     setEditIsActive(disease.isActive !== false);
     setEditError(null);
   };
@@ -132,6 +153,10 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
     setEditName("");
     setEditSymptoms("");
     setEditLabResults(blankLabRows());
+    setEditHormoneKey("");
+    setEditHormoneLabel("");
+    setEditTreatmentKey("");
+    setEditTreatmentLabel("");
     setEditIsActive(true);
     setEditError(null);
   };
@@ -188,6 +213,10 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
           name: newName.trim(),
           symptoms: newSymptoms.trim(),
           labResults: newLabResults,
+          hormoneChoiceKey: newHormoneKey.trim(),
+          hormoneChoiceLabel: newHormoneLabel.trim(),
+          treatmentChoiceKey: newTreatmentKey.trim(),
+          treatmentChoiceLabel: newTreatmentLabel.trim(),
         }),
       });
 
@@ -229,6 +258,10 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
           name: editName.trim(),
           symptoms: editSymptoms.trim(),
           labResults: editLabResults,
+          hormoneChoiceKey: editHormoneKey.trim(),
+          hormoneChoiceLabel: editHormoneLabel.trim(),
+          treatmentChoiceKey: editTreatmentKey.trim(),
+          treatmentChoiceLabel: editTreatmentLabel.trim(),
           isActive: editIsActive,
         }),
       });
@@ -841,6 +874,30 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  ตัวเลือกของสถานีห้องยา (เภสัชกร)
+                </label>
+                <p className="text-[10px] text-slate-400 mb-2">
+                  เฉลยที่เภสัชกรต้องเลือกให้ถูกสำหรับโรคนี้ · ถูก 1 ข้อ = 2 คะแนน, ถูกทั้ง 2 ข้อ = 3 คะแนน
+                  · เว้นว่างทั้งหมดได้ถ้าโรคนี้ยังไม่ใช้ในสถานีห้องยา
+                </p>
+                <DiseasePharmacyChoicesEditor
+                  namePrefix="disease"
+                  hormoneKey={newHormoneKey}
+                  hormoneLabel={newHormoneLabel}
+                  treatmentKey={newTreatmentKey}
+                  treatmentLabel={newTreatmentLabel}
+                  disabled={adding}
+                  onChange={(field, value) => {
+                    if (field === "hormoneKey") setNewHormoneKey(value);
+                    else if (field === "hormoneLabel") setNewHormoneLabel(value);
+                    else if (field === "treatmentKey") setNewTreatmentKey(value);
+                    else setNewTreatmentLabel(value);
+                  }}
+                />
+              </div>
+
               <div className="mt-6 flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
@@ -960,6 +1017,30 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  ตัวเลือกของสถานีห้องยา (เภสัชกร)
+                </label>
+                <p className="text-[10px] text-slate-400 mb-2">
+                  เฉลยที่เภสัชกรต้องเลือกให้ถูกสำหรับโรคนี้ · ถูก 1 ข้อ = 2 คะแนน, ถูกทั้ง 2 ข้อ = 3 คะแนน
+                  · เว้นว่างทั้งหมดได้ถ้าโรคนี้ยังไม่ใช้ในสถานีห้องยา
+                </p>
+                <DiseasePharmacyChoicesEditor
+                  namePrefix="edit_disease"
+                  hormoneKey={editHormoneKey}
+                  hormoneLabel={editHormoneLabel}
+                  treatmentKey={editTreatmentKey}
+                  treatmentLabel={editTreatmentLabel}
+                  disabled={savingEdit}
+                  onChange={(field, value) => {
+                    if (field === "hormoneKey") setEditHormoneKey(value);
+                    else if (field === "hormoneLabel") setEditHormoneLabel(value);
+                    else if (field === "treatmentKey") setEditTreatmentKey(value);
+                    else setEditTreatmentLabel(value);
+                  }}
+                />
+              </div>
+
               <div className="pt-1">
                 <label className="block text-xs font-semibold text-slate-700 mb-2">
                   สถานะการใช้งาน
@@ -1057,6 +1138,31 @@ export function DiseasesContent({ initialDiseases }: { initialDiseases: Disease[
             <div className="mt-4">
               <DiseaseLabResultsTable rows={labRowsOf(diseaseToView)} />
             </div>
+
+            {/* เฉลยของสถานีห้องยา — เห็นเฉพาะครู ไม่ถูกพิมพ์ลงบัตรผู้ป่วย */}
+            {diseaseToView.hormoneChoiceKey && diseaseToView.treatmentChoiceKey && (
+              <div className="mt-4 rounded-xl border border-fuchsia-200 bg-fuchsia-50/50 p-3">
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fuchsia-800">
+                  เฉลยสถานีห้องยา (เภสัชกร)
+                </p>
+                <div className="space-y-2 text-xs">
+                  {[
+                    ["ความผิดปกติของฮอร์โมน", diseaseToView.hormoneChoiceKey, diseaseToView.hormoneChoiceLabel],
+                    ["ยา/การรักษา", diseaseToView.treatmentChoiceKey, diseaseToView.treatmentChoiceLabel],
+                  ].map(([heading, choiceKey, choiceLabel]) => (
+                    <div key={heading} className="rounded-lg bg-white p-2.5">
+                      <span className="mb-0.5 block text-[10px] font-semibold text-slate-500">{heading}</span>
+                      <span className="font-medium text-slate-800">
+                        <span className="mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded bg-fuchsia-600 text-[10px] font-black text-white">
+                          {choiceKey}
+                        </span>
+                        {choiceLabel}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
               <button

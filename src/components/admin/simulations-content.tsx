@@ -13,18 +13,11 @@ import {
   Plus,
   RefreshCw,
   Square,
-  Trophy,
   Users,
 } from "lucide-react";
 import { getPlayRole, type PlayRoleId } from "@/lib/play/roles";
-import {
-  GROUP_ACCENTS,
-  GroupResultsSummaryCard,
-  GroupScoreLeaderboard,
-  OverallResultsDonut,
-  type GroupResults,
-  type ResultsSummaryTheme,
-} from "@/components/projector/results-summary";
+import type { GroupResults } from "@/components/projector/results-summary";
+import { SimulationResultsSummary } from "@/components/admin/simulation-results-summary";
 
 type SessionStatus = "LOBBY" | "RUNNING" | "ENDED";
 
@@ -76,13 +69,6 @@ interface SessionSnapshot {
     results: GroupResults | null;
   }>;
 }
-
-const ADMIN_RESULTS_THEME: ResultsSummaryTheme = {
-  secondary: "text-slate-400",
-  stat: "bg-slate-100",
-  item: "border border-slate-100 bg-slate-50/70",
-  faint: "text-slate-400",
-};
 
 function statusLabel(status: SessionStatus) {
   if (status === "LOBBY") return "รอเริ่ม";
@@ -165,39 +151,6 @@ export function SimulationsContent() {
 
   const selectedSessionEnded =
     snapshot?.id === selectedSessionId && snapshot.status === "ENDED";
-
-  const overallResults = useMemo(() => {
-    if (!snapshot || !selectedSessionEnded) return null;
-    return snapshot.groups.reduce(
-      (totals, group) => {
-        if (!group.results) return totals;
-        totals.correct += group.results.correctCount;
-        totals.wrong += group.results.wrongCount;
-        totals.score += group.results.totalScore;
-        return totals;
-      },
-      { correct: 0, wrong: 0, score: 0 }
-    );
-  }, [snapshot, selectedSessionEnded]);
-
-  const leaderboardBars = useMemo(() => {
-    if (!snapshot || !selectedSessionEnded) return [];
-    return snapshot.groups
-      .map((group, groupIndex) => ({
-        id: group.id,
-        name: group.name,
-        score: group.results?.totalScore ?? 0,
-        successRate: group.results?.successRate ?? 0,
-        correctCount: group.results?.correctCount ?? 0,
-        wrongCount: group.results?.wrongCount ?? 0,
-        doctorScore: group.results?.doctorScore ?? 0,
-        labCorrectCount: group.results?.labCorrectCount ?? 0,
-        labWrongCount: group.results?.labWrongCount ?? 0,
-        labScore: group.results?.labScore ?? 0,
-        accentBadge: GROUP_ACCENTS[groupIndex % GROUP_ACCENTS.length].badge,
-      }))
-      .sort((a, b) => b.score - a.score);
-  }, [snapshot, selectedSessionEnded]);
 
   useEffect(() => {
     if (!selectedSessionId || selectedSessionEnded) {
@@ -348,43 +301,11 @@ export function SimulationsContent() {
                 <div className="grid gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:grid-cols-3 sm:px-7"><div><p className="text-xs font-bold text-slate-400">สถานะ</p><span className={`mt-1 inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${statusClass(snapshot.status)}`}>{statusLabel(snapshot.status)}</span></div><div><p className="text-xs font-bold text-slate-400">ผู้เข้าร่วม</p><p className="mt-1 text-lg font-black text-slate-800">{snapshot.participantCount} <span className="text-xs font-semibold text-slate-400">คน</span></p></div><div><p className="text-xs font-bold text-slate-400">เวลาเริ่มเกม</p><p className="mt-1 text-sm font-bold text-slate-700">{formatTime(snapshot.startedAt)}</p></div></div>
               </div>
 
-              {snapshot.status === "ENDED" && overallResults && (
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div>
-                      <h2 className="font-bold text-slate-900">สรุปผลรอบจำลอง</h2>
-                      <p className="mt-1 text-xs text-slate-500">รอบฝึกสิ้นสุดแล้ว</p>
-                    </div>
-                    <Trophy className="h-5 w-5 text-amber-500" />
-                  </div>
-
-                  <div className="grid gap-5 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 md:grid-cols-[auto_1fr] sm:p-5">
-                    <div>
-                      <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">ภาพรวมทั้งหมด</p>
-                      <OverallResultsDonut correct={overallResults.correct} wrong={overallResults.wrong} themeStyles={ADMIN_RESULTS_THEME} />
-                      <p className="mt-3 text-2xl font-black text-slate-800">
-                        {overallResults.score} <span className="text-sm font-bold text-slate-400">คะแนนรวมทุกกลุ่ม</span>
-                      </p>
-                    </div>
-                    <div className="border-t border-slate-200 pt-5 md:border-l md:border-t-0 md:pl-6 md:pt-0">
-                      <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">เปรียบเทียบคะแนนรายกลุ่ม</p>
-                      <GroupScoreLeaderboard bars={leaderboardBars} themeStyles={ADMIN_RESULTS_THEME} />
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {snapshot.groups.map((group) => (
-                      <div key={group.id} className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
-                        <h3 className="flex items-center gap-2 text-sm font-black text-slate-900"><DoorOpen className="h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />{group.name}</h3>
-                        {group.results ? (
-                          <GroupResultsSummaryCard results={group.results} themeStyles={ADMIN_RESULTS_THEME} />
-                        ) : (
-                          <p className="mt-3 text-xs text-slate-400">ไม่มีข้อมูลผลลัพธ์</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              {selectedSessionEnded && (
+                <SimulationResultsSummary
+                  groups={snapshot.groups}
+                  subtitle={`รอบ ${snapshot.roomCode} · สิ้นสุดเมื่อ ${formatTime(snapshot.endedAt)}`}
+                />
               )}
 
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

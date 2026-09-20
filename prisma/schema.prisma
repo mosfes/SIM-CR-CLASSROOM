@@ -117,6 +117,11 @@ model Disease {
   name            String
   symptoms        String            @db.Text
   labResults      Json? // [{ name, result, referenceRange }] ผลตรวจทางห้องปฏิบัติการ
+  // เฉลยของสถานีห้องยา: ตัวเลือกความผิดปกติของฮอร์โมน (A-U) และยา/การรักษา (ก-ธ) ตามใบงาน
+  hormoneChoiceKey     String?      @db.VarChar(8)
+  hormoneChoiceLabel   String?
+  treatmentChoiceKey   String?      @db.VarChar(8)
+  treatmentChoiceLabel String?      @db.Text
   isActive        Boolean           @default(true)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
@@ -394,8 +399,18 @@ model PharmacyDispense {
   maritalStatus       String
   diseaseName         String
   doctorDiagnosisText String           @db.Text
-  medicines           Json
-  totalTablets        Int
+  // รายการยาแบบกรอกเอง (รูปแบบเดิม) เก็บไว้เพื่ออ่านเวชระเบียนรอบเก่าได้
+  medicines           Json?
+  totalTablets        Int?
+  // ตัวเลือกจากใบงาน: ความผิดปกติของฮอร์โมน (A-U) และยา/การรักษา (ก-ธ)
+  hormoneChoiceKey     String?         @db.VarChar(8)
+  hormoneChoiceLabel   String?
+  treatmentChoiceKey   String?         @db.VarChar(8)
+  treatmentChoiceLabel String?         @db.Text
+  isHormoneCorrect     Boolean?
+  isTreatmentCorrect   Boolean?
+  isCorrect            Boolean? // ถูกทั้งสองข้อหรือไม่ (ใช้ในหน้ามอนิเตอร์ครู)
+  evaluationScore      Int? // คะแนนเต็ม 3: ถูก 1 ข้อ = 2, ถูกทั้ง 2 ข้อ = 3
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   patientCard         PatientCard?     @relation(fields: [patientCardId], references: [id], onDelete: SetNull)

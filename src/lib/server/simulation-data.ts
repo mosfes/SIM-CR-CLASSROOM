@@ -478,7 +478,7 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
   // Only compute the heavier per-student results breakdown once the round has
   // ended: the projector polls this snapshot every few seconds while running,
   // and this data is only surfaced in the end-of-game summary screen.
-  const [doctorScoreRows, labScoreRows] =
+  const [doctorScoreRows, labScoreRows, pharmacyScoreRows] =
     session.status === "ENDED"
       ? await Promise.all([
           prisma.doctorDiagnosis.findMany({
@@ -501,12 +501,23 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
               evaluationScore: true,
             },
           }),
+          prisma.pharmacyDispense.findMany({
+            where: { simulationId },
+            select: {
+              groupId: true,
+              pharmacistId: true,
+              pharmacistName: true,
+              isCorrect: true,
+              evaluationScore: true,
+            },
+          }),
         ])
-      : [[], []];
+      : [[], [], []];
 
   const buildGroupResults = (groupId: string) => {
     const groupDoctorRows = doctorScoreRows.filter((row) => row.groupId === groupId);
     const groupLabRows = labScoreRows.filter((row) => row.groupId === groupId);
+    const groupPharmacyRows = pharmacyScoreRows.filter((row) => row.groupId === groupId);
 
     const diagnosedCount = groupDoctorRows.length;
     const correctCount = groupDoctorRows.filter((row) => row.isCorrect === true).length;
@@ -518,8 +529,20 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
     const labWrongCount = groupLabRows.filter((row) => row.isCorrect === false).length;
     const labSuccessRate = labCount > 0 ? Math.round((labCorrectCount / labCount) * 100) : 0;
 
+    // เคสของเภสัชกรที่บันทึกก่อนมีระบบตัวเลือก จะไม่มีคะแนน จึงไม่นับเป็นถูกหรือผิด
+    const pharmacyRowsWithKey = groupPharmacyRows.filter((row) => row.isCorrect !== null);
+    const pharmacyCount = pharmacyRowsWithKey.length;
+    const pharmacyCorrectCount = pharmacyRowsWithKey.filter((row) => row.isCorrect === true).length;
+    const pharmacyWrongCount = pharmacyRowsWithKey.filter((row) => row.isCorrect === false).length;
+    const pharmacySuccessRate =
+      pharmacyCount > 0 ? Math.round((pharmacyCorrectCount / pharmacyCount) * 100) : 0;
+
     const doctorScore = groupDoctorRows.reduce((sum, row) => sum + (row.evaluationScore ?? 0), 0);
     const labScore = groupLabRows.reduce((sum, row) => sum + (row.evaluationScore ?? 0), 0);
+    const pharmacyScore = groupPharmacyRows.reduce(
+      (sum, row) => sum + (row.evaluationScore ?? 0),
+      0
+    );
 
     const scoreByStudent = new Map<string, { name: string; score: number }>();
     for (const row of groupDoctorRows) {
@@ -534,8 +557,14 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
       entry.score += row.evaluationScore ?? 0;
       scoreByStudent.set(row.medTechId, entry);
     }
+    for (const row of groupPharmacyRows) {
+      if (!row.pharmacistId) continue;
+      const entry = scoreByStudent.get(row.pharmacistId) ?? { name: row.pharmacistName, score: 0 };
+      entry.score += row.evaluationScore ?? 0;
+      scoreByStudent.set(row.pharmacistId, entry);
+    }
 
-    const totalScore = doctorScore + labScore;
+    const totalScore = doctorScore + labScore + pharmacyScore;
     const topScorers = Array.from(scoreByStudent.entries())
       .map(([studentId, { name, score }]) => ({ studentId, name, score }))
       .sort((a, b) => b.score - a.score)
@@ -550,8 +579,13 @@ async function getSimulationSnapshotByWhere(where: Prisma.SimulationSessionWhere
       labCorrectCount,
       labWrongCount,
       labSuccessRate,
+      pharmacyCount,
+      pharmacyCorrectCount,
+      pharmacyWrongCount,
+      pharmacySuccessRate,
       doctorScore,
       labScore,
+      pharmacyScore,
       totalScore,
       topScorers,
     };

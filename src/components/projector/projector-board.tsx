@@ -361,6 +361,9 @@ export function ProjectorBoard({ roomCode }: { roomCode: string }) {
           labCorrectCount: group.results?.labCorrectCount ?? 0,
           labWrongCount: group.results?.labWrongCount ?? 0,
           labScore: group.results?.labScore ?? 0,
+          pharmacyCorrectCount: group.results?.pharmacyCorrectCount ?? 0,
+          pharmacyWrongCount: group.results?.pharmacyWrongCount ?? 0,
+          pharmacyScore: group.results?.pharmacyScore ?? 0,
           accentBadge: GROUP_ACCENTS[groupIndex % GROUP_ACCENTS.length].badge,
         }))
         .sort((a, b) => b.score - a.score)

@@ -3,6 +3,30 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { authorizeAdminRequest } from "@/lib/server/admin-api";
 import { normalizeLabResultsInput, parseLabResults } from "@/lib/disease-lab-results";
+import {
+  PHARMACY_HORMONE_LABEL_MAX_LENGTH,
+  PHARMACY_TREATMENT_LABEL_MAX_LENGTH,
+  normalizePharmacyChoiceInput,
+} from "@/lib/pharmacy-choices";
+
+/** ตรวจตัวเลือก A-U และ ก-ธ ที่ครูกรอกให้กับโรคหนึ่ง ๆ */
+function normalizeDiseaseChoices(body: Record<string, unknown>) {
+  const hormone = normalizePharmacyChoiceInput(body.hormoneChoiceKey, body.hormoneChoiceLabel, {
+    fieldLabel: "ตัวเลือกความผิดปกติของฮอร์โมน (A-U)",
+    labelMaxLength: PHARMACY_HORMONE_LABEL_MAX_LENGTH,
+  });
+  const treatment = normalizePharmacyChoiceInput(body.treatmentChoiceKey, body.treatmentChoiceLabel, {
+    fieldLabel: "ตัวเลือกยา/การรักษา (ก-ธ)",
+    labelMaxLength: PHARMACY_TREATMENT_LABEL_MAX_LENGTH,
+  });
+
+  return {
+    hormoneChoiceKey: hormone.key,
+    hormoneChoiceLabel: hormone.label,
+    treatmentChoiceKey: treatment.key,
+    treatmentChoiceLabel: treatment.label,
+  };
+}
 
 export async function GET(request: NextRequest) {
   const authorization = await authorizeAdminRequest(request);
@@ -114,6 +138,19 @@ export async function POST(request: NextRequest) {
     const cleanName = name.trim();
     const cleanSymptoms = symptoms.trim();
 
+    let choices;
+    try {
+      choices = normalizeDiseaseChoices(body);
+    } catch (error) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: error instanceof Error ? error.message : "ข้อมูลตัวเลือกของห้องยาไม่ถูกต้อง",
+        },
+        { status: 400 }
+      );
+    }
+
     let cleanLabResults;
     try {
       cleanLabResults = normalizeLabResultsInput(labResults);
@@ -148,6 +185,7 @@ export async function POST(request: NextRequest) {
         name: cleanName,
         symptoms: cleanSymptoms,
         labResults: cleanLabResults as unknown as Prisma.InputJsonValue,
+        ...choices,
         isActive: typeof isActive === "boolean" ? isActive : true,
       },
     });

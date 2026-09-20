@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  buildPharmacyChoiceOptions,
+  evaluatePharmacyChoice,
+  readDiseaseAnswerKey,
+} from "@/lib/pharmacy-choices";
 import { getRunningSimulationParticipant } from "@/lib/server/simulation-data";
+
+const diseaseChoiceSelect = {
+  code: true,
+  hormoneChoiceKey: true,
+  hormoneChoiceLabel: true,
+  treatmentChoiceKey: true,
+  treatmentChoiceLabel: true,
+} as const;
 
 function jsonError(message: string, status: number) {
   return NextResponse.json(
@@ -39,11 +52,6 @@ function requiredText(value: unknown, label: string, maxLength = 191) {
   return cleanValue;
 }
 
-interface MedicineItemInput {
-  name: unknown;
-  tabletCount: unknown;
-}
-
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) {
     return jsonError("คำขอไม่ผ่านการตรวจสอบความปลอดภัย", 403);
@@ -61,38 +69,11 @@ export async function POST(request: NextRequest) {
     const simulationId = requiredText(body.simulationId, "รอบจำลอง");
     const doctorDiagnosisId = requiredText(body.doctorDiagnosisId, "ผู้ป่วย");
 
-    const rawMedicines = body.medicines;
-    if (!Array.isArray(rawMedicines) || rawMedicines.length === 0) {
-      return jsonError("กรุณาระบุรายการยาอย่างน้อย 1 รายการ", 400);
-    }
+    const hormoneChoiceKey = requiredText(body.hormoneChoiceKey, "ความผิดปกติของฮอร์โมน (A-U)", 8);
+    const treatmentChoiceKey = requiredText(body.treatmentChoiceKey, "ยา/การรักษาที่ควรได้รับ (ก-ธ)", 8);
 
-    const cleanMedicines: { name: string; tabletCount: number }[] = [];
-    let totalTablets = 0;
-
-    for (let i = 0; i < rawMedicines.length; i++) {
-      const item = rawMedicines[i] as MedicineItemInput;
-      if (!item || typeof item !== "object") {
-        return jsonError(`ข้อมูลรายการยาที่ ${i + 1} ไม่ถูกต้อง`, 400);
-      }
-
-      if (typeof item.name !== "string" || !item.name.trim()) {
-        return jsonError(`กรุณากรอกชื่อ/รายการยาสำหรับรายการที่ ${i + 1}`, 400);
-      }
-      const name = item.name.trim();
-      if (name.length > 191) {
-        return jsonError(`ชื่อยาที่ ${i + 1} ยาวเกินไป`, 400);
-      }
-
-      const count = Number(item.tabletCount);
-      if (!Number.isInteger(count) || count < 1 || count > 10000) {
-        return jsonError(`กรุณาระบุจำนวนเม็ดที่ถูกต้องสำหรับ ${name} (1-10,000 เม็ด)`, 400);
-      }
-
-      cleanMedicines.push({ name, tabletCount: count });
-      totalTablets += count;
-    }
-
-    const [pharmacist, classroom, group, doctorDiagnosis, simulation] = await Promise.all([
+    const [pharmacist, classroom, group, doctorDiagnosis, simulation, choiceDiseases] =
+      await Promise.all([
       prisma.user.findFirst({
         where: { id: pharmacistId, role: "STUDENT", isActive: true },
         select: { id: true, name: true },
@@ -126,6 +107,7 @@ export async function POST(request: NextRequest) {
           maritalStatus: true,
           diseaseName: true,
           doctorDiagnosis: true,
+          patientCard: { select: { diseaseCode: true } },
         },
       }),
       getRunningSimulationParticipant({
@@ -135,6 +117,8 @@ export async function POST(request: NextRequest) {
         groupId,
         role: "pharmacist",
       }),
+      // เฉลยและตัวเลือกทั้งหมดผูกอยู่กับตัวโรค ครูแก้ไขได้จากหน้าจัดการข้อมูลโรค
+      prisma.disease.findMany({ where: { isActive: true }, select: diseaseChoiceSelect }),
     ]);
 
     if (!pharmacist || !classroom || !group || !simulation) {
@@ -143,6 +127,28 @@ export async function POST(request: NextRequest) {
     if (!doctorDiagnosis) {
       return jsonError("ผู้ป่วยรายนี้ได้รับการจ่ายยาแล้ว หรือไม่อยู่ในห้องตรวจนี้", 409);
     }
+
+    const { hormones, treatments } = buildPharmacyChoiceOptions(choiceDiseases);
+    const hormoneChoice = hormones.find((option) => option.key === hormoneChoiceKey);
+    if (!hormoneChoice) {
+      return jsonError("ไม่พบตัวเลือกความผิดปกติของฮอร์โมนที่เลือก กรุณาเลือกใหม่", 400);
+    }
+    const treatmentChoice = treatments.find((option) => option.key === treatmentChoiceKey);
+    if (!treatmentChoice) {
+      return jsonError("ไม่พบตัวเลือกยา/การรักษาที่เลือก กรุณาเลือกใหม่", 400);
+    }
+
+    // ให้คะแนนเทียบกับเฉลยของโรคจริงที่ห้องบัตรกำหนด ไม่ใช่โรคที่แพทย์วินิจฉัย
+    // เภสัชกรจึงต้องวิเคราะห์เองว่าข้อมูลที่ส่งต่อกันมาถูกต้องหรือไม่
+    const expectedDiseaseCode = doctorDiagnosis.patientCard?.diseaseCode?.trim();
+    const expectedDisease = expectedDiseaseCode
+      ? choiceDiseases.find((disease) => disease.code === expectedDiseaseCode)
+      : null;
+    const evaluation = evaluatePharmacyChoice({
+      answer: readDiseaseAnswerKey(expectedDisease),
+      hormone: hormoneChoice,
+      treatment: treatmentChoice,
+    });
 
     const dispenseRecord = await prisma.pharmacyDispense.create({
       data: {
@@ -165,8 +171,14 @@ export async function POST(request: NextRequest) {
         maritalStatus: doctorDiagnosis.maritalStatus,
         diseaseName: doctorDiagnosis.diseaseName,
         doctorDiagnosisText: doctorDiagnosis.doctorDiagnosis,
-        medicines: cleanMedicines,
-        totalTablets,
+        hormoneChoiceKey: hormoneChoice.key,
+        hormoneChoiceLabel: hormoneChoice.label,
+        treatmentChoiceKey: treatmentChoice.key,
+        treatmentChoiceLabel: treatmentChoice.label,
+        isHormoneCorrect: evaluation.isHormoneCorrect,
+        isTreatmentCorrect: evaluation.isTreatmentCorrect,
+        isCorrect: evaluation.isCorrect,
+        evaluationScore: evaluation.score,
       },
       select: { id: true, queueNumber: true, createdAt: true },
     });

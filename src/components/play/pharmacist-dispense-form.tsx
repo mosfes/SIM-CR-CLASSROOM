@@ -1,21 +1,22 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
+  FlaskConical,
   Info,
   Pill,
-  Plus,
   RefreshCw,
   RotateCcw,
   Save,
   Stethoscope,
-  Trash2,
+  TriangleAlert,
   UserRound,
 } from "lucide-react";
 import { playClick, playSuccess } from "@/lib/play/sound";
 import { formatPatientCode } from "@/lib/patient-code";
+import { PHARMACY_MAX_SCORE, type PharmacyChoiceOption } from "@/lib/pharmacy-choices";
 
 export interface DoctorDiagnosisOption {
   id: string;
@@ -31,6 +32,7 @@ export interface DoctorDiagnosisOption {
   maritalStatus: string;
   diseaseName: string;
   doctorDiagnosis: string;
+  treatmentPlan?: string | null;
   createdAt: string;
   weightKg?: number | null;
   heightCm?: number | null;
@@ -41,12 +43,14 @@ export interface DoctorDiagnosisOption {
   chronicDiseaseDetails?: string | null;
   chiefComplaint?: string | null;
   symptomDescription?: string | null;
-}
-
-interface MedicineRow {
-  id: string;
-  name: string;
-  tabletCount: string;
+  nurseNotes?: string | null;
+  labResult?: {
+    id: string;
+    medTechName: string;
+    items: { name: string; result: string; referenceRange: string }[];
+    notes: string | null;
+    createdAt: string;
+  } | null;
 }
 
 interface PharmacistDispenseFormProps {
@@ -55,16 +59,25 @@ interface PharmacistDispenseFormProps {
   group: { id: string; name: string };
   simulationId: string;
   initialDoctorDiagnoses: DoctorDiagnosisOption[];
+  /** ตัวเลือก A-U ที่รวบรวมจากเฉลยของโรคในฐานข้อมูล */
+  hormoneOptions: PharmacyChoiceOption[];
+  /** ตัวเลือก ก-ธ ที่รวบรวมจากเฉลยของโรคในฐานข้อมูล */
+  treatmentOptions: PharmacyChoiceOption[];
 }
 
 type SaveState =
   | { status: "idle" }
   | { status: "saving" }
-  | { status: "success"; recordId: string; queueNumber?: number | null; patientName: string; totalTablets: number }
+  | { status: "success"; recordId: string; queueNumber?: number | null; patientName: string }
   | { status: "error"; message: string };
 
 const fieldClass =
   "mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-base font-medium text-slate-900 outline-none transition placeholder:text-slate-300 hover:border-fuchsia-300 focus:border-fuchsia-500 focus:ring-4 focus:ring-fuchsia-100";
+
+/** ตัวเลือกบางข้อยาวมาก ตัดให้พอดีบรรทัดใน dropdown แล้วค่อยแสดงเต็มในการ์ดด้านล่าง */
+function truncate(text: string, maxLength = 72) {
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+}
 
 function FieldLabel({ children, required = false }: { children: React.ReactNode; required?: boolean }) {
   return (
@@ -106,6 +119,8 @@ export function PharmacistDispenseForm({
   group,
   simulationId,
   initialDoctorDiagnoses,
+  hormoneOptions,
+  treatmentOptions,
 }: PharmacistDispenseFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
@@ -113,39 +128,17 @@ export function PharmacistDispenseForm({
   const [selectedDiagnosisId, setSelectedDiagnosisId] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
-  const [medicineRows, setMedicineRows] = useState<MedicineRow[]>([
-    { id: "item-1", name: "", tabletCount: "" },
-  ]);
+  const [hormoneChoiceKey, setHormoneChoiceKey] = useState("");
+  const [treatmentChoiceKey, setTreatmentChoiceKey] = useState("");
 
   const selectedDiagnosis = diagnoses.find((item) => item.id === selectedDiagnosisId);
+  const selectedHormone = hormoneOptions.find((option) => option.key === hormoneChoiceKey);
+  const selectedTreatment = treatmentOptions.find((option) => option.key === treatmentChoiceKey);
+  const choicesUnavailable = hormoneOptions.length === 0 || treatmentOptions.length === 0;
 
-  const totalTablets = useMemo(() => {
-    return medicineRows.reduce((sum, row) => {
-      const count = parseInt(row.tabletCount, 10);
-      return sum + (Number.isFinite(count) && count > 0 ? count : 0);
-    }, 0);
-  }, [medicineRows]);
-
-  function handleAddRow() {
-    playClick();
-    setMedicineRows((rows) => [
-      ...rows,
-      { id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`, name: "", tabletCount: "" },
-    ]);
-  }
-
-  function handleRemoveRow(id: string) {
-    playClick();
-    setMedicineRows((rows) => {
-      if (rows.length <= 1) return rows;
-      return rows.filter((r) => r.id !== id);
-    });
-  }
-
-  function handleRowChange(id: string, field: "name" | "tabletCount", value: string) {
-    setMedicineRows((rows) =>
-      rows.map((row) => (row.id === id ? { ...row, [field]: value } : row))
-    );
+  function clearChoices() {
+    setHormoneChoiceKey("");
+    setTreatmentChoiceKey("");
   }
 
   async function refreshDiagnoses() {
@@ -162,6 +155,7 @@ export function PharmacistDispenseForm({
       setDiagnoses(result.data);
       if (!result.data.some((item: DoctorDiagnosisOption) => item.id === selectedDiagnosisId)) {
         setSelectedDiagnosisId("");
+        clearChoices();
       }
       setSaveState({ status: "idle" });
     } catch (error) {
@@ -181,30 +175,15 @@ export function PharmacistDispenseForm({
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
-
-    const cleanMedicines = medicineRows
-      .map((row) => ({
-        name: row.name.trim(),
-        tabletCount: parseInt(row.tabletCount, 10),
-      }))
-      .filter((row) => row.name.length > 0);
-
-    if (cleanMedicines.length === 0) {
-      setSaveState({ status: "error", message: "กรุณาระบุรายการยาอย่างน้อย 1 รายการ" });
+    if (!hormoneChoiceKey) {
+      setSaveState({ status: "error", message: "กรุณาเลือกความผิดปกติของฮอร์โมน (A-U)" });
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
-
-    for (let i = 0; i < cleanMedicines.length; i++) {
-      const item = cleanMedicines[i];
-      if (!Number.isInteger(item.tabletCount) || item.tabletCount <= 0) {
-        setSaveState({
-          status: "error",
-          message: `กรุณาระบุจำนวนเม็ดที่ถูกต้องสำหรับ "${item.name}"`,
-        });
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-      }
+    if (!treatmentChoiceKey) {
+      setSaveState({ status: "error", message: "กรุณาเลือกยา/การรักษาที่ควรได้รับ (ก-ธ)" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
     }
 
     setSaveState({ status: "saving" });
@@ -215,7 +194,8 @@ export function PharmacistDispenseForm({
       groupId: group.id,
       simulationId,
       doctorDiagnosisId: selectedDiagnosisId,
-      medicines: cleanMedicines,
+      hormoneChoiceKey,
+      treatmentChoiceKey,
     };
 
     try {
@@ -237,13 +217,12 @@ export function PharmacistDispenseForm({
         : "ผู้ป่วย";
       setDiagnoses((items) => items.filter((item) => item.id !== selectedDiagnosisId));
       setSelectedDiagnosisId("");
-      setMedicineRows([{ id: `item-${Date.now()}`, name: "", tabletCount: "" }]);
+      clearChoices();
       setSaveState({
         status: "success",
         recordId: result.data.id,
         queueNumber: result.data.queueNumber,
         patientName,
-        totalTablets,
       });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -257,7 +236,7 @@ export function PharmacistDispenseForm({
   function handleReset() {
     playClick();
     formRef.current?.reset();
-    setMedicineRows([{ id: `item-${Date.now()}`, name: "", tabletCount: "" }]);
+    clearChoices();
     setSaveState({ status: "idle" });
   }
 
@@ -272,7 +251,7 @@ export function PharmacistDispenseForm({
             </div>
             <div>
               <p className="text-xs font-bold text-fuchsia-100">สถานีห้องยา / เภสัชกร</p>
-              <h2 className="text-2xl font-bold">บันทึกการจ่ายยา</h2>
+              <h2 className="text-2xl font-bold">วิเคราะห์และจ่ายยา</h2>
             </div>
           </div>
         </div>
@@ -299,9 +278,7 @@ export function PharmacistDispenseForm({
           <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 shadow-sm">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
             <div>
-              <p className="font-bold">
-                จ่ายยาให้ {saveState.patientName} เรียบร้อยแล้ว (รวม {saveState.totalTablets} เม็ด)
-              </p>
+              <p className="font-bold">ส่งคำตอบสำหรับ {saveState.patientName} เรียบร้อยแล้ว</p>
               <p className="mt-0.5 text-sm font-medium text-emerald-700">
                 รหัสผู้ป่วย {saveState.queueNumber != null ? formatPatientCode(saveState.queueNumber) : saveState.recordId.slice(-8)} เสร็จสิ้นรอบการรักษาผู้ป่วยรายนี้เรียบร้อยแล้ว ★
               </p>
@@ -320,13 +297,13 @@ export function PharmacistDispenseForm({
       </div>
 
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-5" aria-label="แบบฟอร์มการจ่ายยาของเภสัชกร">
-        {/* Section 1: Patient info & Doctor Diagnosis */}
+        {/* Section 1: Patient info & the whole chain of data */}
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-md sm:p-7">
           <SectionHeading
             icon={UserRound}
             number="1"
-            title="ข้อมูลผู้ป่วยและคำสั่งจากแพทย์"
-            description="เลือกเคสผู้ป่วยที่แพทย์ตรวจวินิจฉัยแล้วเพื่อดำเนินการจัดยา"
+            title="ข้อมูลที่ส่งต่อกันมาทั้งหมด"
+            description="อ่านอาการจากพยาบาล ผลตรวจจากเทคนิคการแพทย์ และคำวินิจฉัยของแพทย์ประกอบกัน"
           />
 
           <div className="rounded-2xl border border-fuchsia-200 bg-fuchsia-50/60 p-4 sm:p-5">
@@ -339,6 +316,7 @@ export function PharmacistDispenseForm({
                   value={selectedDiagnosisId}
                   onChange={(event) => {
                     setSelectedDiagnosisId(event.target.value);
+                    clearChoices();
                     setSaveState({ status: "idle" });
                   }}
                   disabled={diagnoses.length === 0}
@@ -349,7 +327,7 @@ export function PharmacistDispenseForm({
                   </option>
                   {diagnoses.map((item) => (
                     <option key={item.id} value={item.id}>
-                      รหัสผู้ป่วย {formatPatientCode(item.queueNumber)}: {item.patientPrefix}{item.patientFirstName} {item.patientLastName} · {item.age} ปี · วินิจฉัย: {item.diseaseName}
+                      รหัสผู้ป่วย {formatPatientCode(item.queueNumber)}: {item.patientPrefix}{item.patientFirstName} {item.patientLastName} · {item.age} ปี
                     </option>
                   ))}
                 </select>
@@ -386,6 +364,95 @@ export function PharmacistDispenseForm({
                   ))}
                 </div>
 
+                {/* Nurse handover */}
+                <div className="rounded-2xl border border-teal-200 bg-white p-4 shadow-sm">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-teal-700">
+                    <Stethoscope className="h-4 w-4" />
+                    <span>ข้อมูลจากพยาบาล</span>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    {selectedDiagnosis.symptomDescription && (
+                      <div className="rounded-xl bg-teal-50/70 p-3">
+                        <span className="block text-xs font-bold text-teal-800">อาการผู้ป่วย</span>
+                        <p className="mt-0.5 whitespace-pre-wrap font-medium leading-relaxed text-slate-800">
+                          {selectedDiagnosis.symptomDescription}
+                        </p>
+                      </div>
+                    )}
+                    <div className="grid gap-2 text-xs sm:grid-cols-2">
+                      {selectedDiagnosis.systolicBp != null && (
+                        <div className="rounded-xl bg-slate-50 p-3">
+                          <span className="font-bold text-slate-500">สัญญาณชีพ: </span>
+                          <span className="font-medium text-slate-700">
+                            BP {selectedDiagnosis.systolicBp}/{selectedDiagnosis.diastolicBp} mmHg · HR{" "}
+                            {selectedDiagnosis.pulseBpm} bpm
+                          </span>
+                        </div>
+                      )}
+                      {selectedDiagnosis.chronicDiseaseStatus && (
+                        <div className="rounded-xl bg-slate-50 p-3">
+                          <span className="font-bold text-slate-500">โรคประจำตัว: </span>
+                          <span className="font-medium text-slate-700">
+                            {selectedDiagnosis.chronicDiseaseStatus === "YES"
+                              ? selectedDiagnosis.chronicDiseaseDetails || "มีโรคประจำตัว"
+                              : selectedDiagnosis.chronicDiseaseStatus === "NONE"
+                                ? "ไม่มี"
+                                : "ไม่ทราบ"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lab results from the med tech */}
+                <div className="rounded-2xl border border-indigo-200 bg-white p-4 shadow-sm">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-700">
+                      <FlaskConical className="h-4 w-4" />
+                      <span>ผลตรวจจากเทคนิคการแพทย์</span>
+                    </div>
+                    {selectedDiagnosis.labResult && (
+                      <span className="text-xs font-semibold text-slate-400">
+                        ผู้ส่งตรวจ: {selectedDiagnosis.labResult.medTechName}
+                      </span>
+                    )}
+                  </div>
+                  {selectedDiagnosis.labResult && selectedDiagnosis.labResult.items.length > 0 ? (
+                    <div className="overflow-hidden rounded-xl border border-indigo-100">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-indigo-50 text-indigo-900">
+                          <tr>
+                            <th className="px-3 py-2 font-bold">รายการตรวจ</th>
+                            <th className="px-3 py-2 font-bold">ผลตรวจ</th>
+                            <th className="px-3 py-2 font-bold">ค่าอ้างอิง</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-indigo-50">
+                          {selectedDiagnosis.labResult.items.map((item, index) => (
+                            <tr key={`${item.name}-${index}`} className="bg-white">
+                              <td className="px-3 py-2 font-semibold text-slate-700">{item.name}</td>
+                              <td className="px-3 py-2 font-bold text-slate-900">{item.result}</td>
+                              <td className="px-3 py-2 font-medium text-slate-400">
+                                {item.referenceRange || "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="rounded-xl bg-slate-50 p-3 text-xs font-medium text-slate-500">
+                      เคสนี้ไม่มีผลตรวจทางห้องปฏิบัติการแนบมา
+                    </p>
+                  )}
+                  {selectedDiagnosis.labResult?.notes && (
+                    <p className="mt-2 rounded-xl bg-slate-50 p-3 text-xs font-medium text-slate-600">
+                      หมายเหตุจากห้องแล็บ: {selectedDiagnosis.labResult.notes}
+                    </p>
+                  )}
+                </div>
+
                 {/* Doctor's diagnosis card */}
                 <div className="rounded-2xl border border-fuchsia-200 bg-white p-4 shadow-sm">
                   <div className="mb-2 flex items-center justify-between">
@@ -399,129 +466,136 @@ export function PharmacistDispenseForm({
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="rounded-xl bg-fuchsia-50/70 p-3">
-                      <span className="block text-xs font-bold text-fuchsia-800">โรคที่วินิจฉัย</span>
+                      <span className="block text-xs font-bold text-fuchsia-800">โรคที่แพทย์วินิจฉัย</span>
                       <span className="text-base font-bold text-slate-900">
                         {selectedDiagnosis.diseaseName}
                       </span>
                     </div>
                     <div className="rounded-xl bg-slate-50 p-3">
                       <span className="block text-xs font-bold text-slate-500">การวินิจฉัยโรคของแพทย์</span>
-                      <p className="mt-0.5 font-medium leading-relaxed text-slate-800">
+                      <p className="mt-0.5 whitespace-pre-wrap font-medium leading-relaxed text-slate-800">
                         {selectedDiagnosis.doctorDiagnosis}
                       </p>
                     </div>
+                    {selectedDiagnosis.treatmentPlan && (
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <span className="block text-xs font-bold text-slate-500">แผนการรักษาที่แพทย์เสนอ</span>
+                        <p className="mt-0.5 whitespace-pre-wrap font-medium leading-relaxed text-slate-800">
+                          {selectedDiagnosis.treatmentPlan}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Patient symptoms & vitals reference */}
-                {(selectedDiagnosis.symptomDescription || selectedDiagnosis.systolicBp) && (
-                  <div className="grid gap-3 sm:grid-cols-2 text-xs">
-                    {selectedDiagnosis.symptomDescription && (
-                      <div className="rounded-xl border border-dashed border-fuchsia-200 bg-white/80 p-3">
-                        <span className="font-bold text-slate-500">อาการผู้ป่วย: </span>
-                        <span className="whitespace-pre-wrap font-medium text-slate-700">{selectedDiagnosis.symptomDescription}</span>
-                      </div>
-                    )}
-                    {selectedDiagnosis.systolicBp && (
-                      <div className="rounded-xl border border-dashed border-fuchsia-200 bg-white/80 p-3">
-                        <span className="font-bold text-slate-500">สัญญาณชีพ: </span>
-                        <span className="font-medium text-slate-700">
-                          BP {selectedDiagnosis.systolicBp}/{selectedDiagnosis.diastolicBp} mmHg · HR {selectedDiagnosis.pulseBpm} bpm
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+                  <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  <span>
+                    ข้อมูลที่ส่งต่อกันมาอาจถูกหรือผิดก็ได้ ระบบจะไม่บอกว่าแพทย์วินิจฉัยถูกไหม
+                    หรือเทคนิคการแพทย์ส่งผลตรวจมาถูกชุดไหม ให้เภสัชกรวิเคราะห์เองจากอาการและค่าผลตรวจ
+                  </span>
+                </div>
               </div>
             ) : (
               <div className="mt-4 flex items-start gap-2 rounded-xl border border-dashed border-fuchsia-200 bg-white/70 p-3 text-sm font-medium text-slate-500">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-fuchsia-600" />
                 {diagnoses.length === 0
                   ? "ให้สถานีแพทย์ตรวจวินิจฉัยผู้ป่วยก่อน แล้วกดรีเฟรชรายชื่อ"
-                  : "เมื่อเลือกผู้ป่วย ระบบจะแสดงโรคที่แพทย์วินิจฉัยและคำสั่งการรักษาสำหรับจัดยา"}
+                  : "เมื่อเลือกผู้ป่วย ระบบจะแสดงอาการ ผลตรวจ และคำวินิจฉัยของแพทย์ให้วิเคราะห์"}
               </div>
             )}
           </div>
         </section>
 
-        {/* Section 2: Medicine Items & Tablet Count */}
+        {/* Section 2: the two answer choices */}
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-md sm:p-7">
           <SectionHeading
             icon={Pill}
             number="2"
-            title="รายการยาและจำนวนเม็ด"
-            description="ระบุรายการยาและจำนวนเม็ดที่จ่ายให้กับผู้ป่วย"
+            title={`คำตอบของเภสัชกร (${PHARMACY_MAX_SCORE} คะแนน)`}
+            description={`เลือกความผิดปกติของฮอร์โมน (A-U) และยา/การรักษา (ก-ธ) ตามใบงาน · ถูก 1 ข้อ = 2 คะแนน, ถูกทั้ง 2 ข้อ = ${PHARMACY_MAX_SCORE} คะแนน`}
           />
 
           <div className="space-y-4">
-            <div className="space-y-3">
-              {medicineRows.map((row, index) => (
-                <div
-                  key={row.id}
-                  className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-3.5 sm:flex-row sm:items-end"
+            <div>
+              <label className="block">
+                <FieldLabel required>ความผิดปกติของฮอร์โมน (A-U)</FieldLabel>
+                <select
+                  required
+                  value={hormoneChoiceKey}
+                  onChange={(event) => {
+                    setHormoneChoiceKey(event.target.value);
+                    setSaveState({ status: "idle" });
+                  }}
+                  disabled={!selectedDiagnosisId || hormoneOptions.length === 0}
+                  className={fieldClass}
                 >
-                  <div className="min-w-0 flex-1">
-                    <FieldLabel required>รายการยา {index + 1}</FieldLabel>
-                    <input
-                      type="text"
-                      required
-                      value={row.name}
-                      onChange={(e) => handleRowChange(row.id, "name", e.target.value)}
-                      placeholder="เช่น พาราเซตามอล (Paracetamol) 500 mg"
-                      className={fieldClass}
-                    />
-                  </div>
-                  <div className="w-full sm:w-44">
-                    <FieldLabel required>จำนวนเม็ด</FieldLabel>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        required
-                        min="1"
-                        max="10000"
-                        inputMode="numeric"
-                        value={row.tabletCount}
-                        onChange={(e) => handleRowChange(row.id, "tabletCount", e.target.value)}
-                        placeholder="0"
-                        className={`${fieldClass} pr-12`}
-                      />
-                      <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
-                        เม็ด
-                      </span>
-                    </div>
-                  </div>
-                  {medicineRows.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveRow(row.id)}
-                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center self-end rounded-xl border border-rose-200 bg-white text-rose-600 transition hover:bg-rose-50 hover:border-rose-300"
-                      title="ลบรายการนี้"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
+                  <option value="" disabled>
+                    {hormoneOptions.length === 0 ? "ยังไม่มีตัวเลือกในระบบ" : "เลือกตัวเลือก A-U"}
+                  </option>
+                  {hormoneOptions.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.key}. {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedHormone && (
+                <div className="mt-2 flex items-start gap-2.5 rounded-xl border border-fuchsia-200 bg-fuchsia-50/70 p-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-fuchsia-600 text-sm font-black text-white">
+                    {selectedHormone.key}
+                  </span>
+                  <p className="text-sm font-bold leading-relaxed text-slate-800">{selectedHormone.label}</p>
                 </div>
-              ))}
+              )}
             </div>
 
-            {/* Add row button & Total summary */}
-            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
-              <button
-                type="button"
-                onClick={handleAddRow}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-fuchsia-300 bg-fuchsia-50/50 px-4 text-sm font-bold text-fuchsia-700 transition hover:bg-fuchsia-100 hover:border-fuchsia-400"
-              >
-                <Plus className="h-4 w-4" />
-                เพิ่มรายการยา
-              </button>
-
-              <div className="flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
-                <span>รวมทั้งหมด:</span>
-                <span className="font-bold text-fuchsia-700">{medicineRows.length} รายการ</span>
-                <span>·</span>
-                <span className="font-bold text-fuchsia-700">{totalTablets} เม็ด</span>
-              </div>
+            <div>
+              <label className="block">
+                <FieldLabel required>ยา/การรักษาที่ควรได้รับ (ก-ธ)</FieldLabel>
+                <select
+                  required
+                  value={treatmentChoiceKey}
+                  onChange={(event) => {
+                    setTreatmentChoiceKey(event.target.value);
+                    setSaveState({ status: "idle" });
+                  }}
+                  disabled={!selectedDiagnosisId || treatmentOptions.length === 0}
+                  className={fieldClass}
+                >
+                  <option value="" disabled>
+                    {treatmentOptions.length === 0 ? "ยังไม่มีตัวเลือกในระบบ" : "เลือกตัวเลือก ก-ธ"}
+                  </option>
+                  {treatmentOptions.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.key}. {truncate(option.label)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedTreatment && (
+                <div className="mt-2 flex items-start gap-2.5 rounded-xl border border-fuchsia-200 bg-fuchsia-50/70 p-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-fuchsia-600 text-sm font-black text-white">
+                    {selectedTreatment.key}
+                  </span>
+                  <p className="text-sm font-bold leading-relaxed text-slate-800">{selectedTreatment.label}</p>
+                </div>
+              )}
             </div>
+
+            {choicesUnavailable ? (
+              <p className="flex items-start gap-2 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                ยังไม่มีตัวเลือก A-U / ก-ธ ในระบบ ให้คุณครูกรอกเฉลยของแต่ละโรคที่หน้าจัดการข้อมูลโรคก่อน
+              </p>
+            ) : (
+              !selectedDiagnosisId && (
+                <p className="flex items-start gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-sm font-medium text-slate-500">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                  เลือกผู้ป่วยในส่วนที่ 1 ก่อน จึงจะตอบตัวเลือกได้
+                </p>
+              )
+            )}
           </div>
         </section>
 
@@ -547,12 +621,12 @@ export function PharmacistDispenseForm({
             {saveState.status === "saving" ? (
               <>
                 <Pill className="h-4 w-4 animate-pulse" />
-                กำลังจ่ายยา...
+                กำลังบันทึก...
               </>
             ) : (
               <>
                 <Save className="h-4 w-4" />
-                บันทึกการจ่ายยาและเสร็จสิ้น
+                บันทึกคำตอบและเสร็จสิ้น
               </>
             )}
           </button>

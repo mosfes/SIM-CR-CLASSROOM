@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { parseLabResults } from "@/lib/disease-lab-results";
+import { buildPharmacyChoiceOptions } from "@/lib/pharmacy-choices";
 import { formatGroupNameForDisplay } from "@/lib/simulation-groups";
 
 export async function getActiveClassroomsWithGroups() {
@@ -260,6 +261,24 @@ export async function getLabPanels() {
   return panels;
 }
 
+/**
+ * ตัวเลือก A-U และ ก-ธ ที่เภสัชกรเลือกได้ รวบรวมจากเฉลยที่ผูกไว้กับแต่ละโรค
+ * โรคที่ครูยังไม่ได้กรอกเฉลย จะไม่มีตัวเลือกของตัวเองโผล่ในรายการ
+ */
+export async function getPharmacyChoiceOptions() {
+  const diseases = await prisma.disease.findMany({
+    where: { isActive: true },
+    select: {
+      hormoneChoiceKey: true,
+      hormoneChoiceLabel: true,
+      treatmentChoiceKey: true,
+      treatmentChoiceLabel: true,
+    },
+  });
+
+  return buildPharmacyChoiceOptions(diseases);
+}
+
 export async function getActiveDiseases() {
   const diseases = await prisma.disease.findMany({
     where: { isActive: true },
@@ -302,6 +321,7 @@ export async function getAvailableDoctorDiagnoses(
       maritalStatus: true,
       diseaseName: true,
       doctorDiagnosis: true,
+      treatmentPlan: true,
       createdAt: true,
       nurseInterview: {
         select: {
@@ -314,16 +334,37 @@ export async function getAvailableDoctorDiagnoses(
           chronicDiseaseDetails: true,
           chiefComplaint: true,
           symptomDescription: true,
+          notes: true,
+        },
+      },
+      // เภสัชกรต้องอ่านผลตรวจดิบเอง จึงไม่ส่งชื่อ/รหัสชุดตรวจที่เทคนิคการแพทย์เลือก
+      // และไม่บอกว่าชุดนั้นถูกหรือผิด
+      labResult: {
+        select: {
+          id: true,
+          medTechName: true,
+          labItems: true,
+          notes: true,
+          createdAt: true,
         },
       },
     },
   });
 
   return diagnoses.map((d) => {
-    const { nurseInterview, ...rest } = d;
+    const { nurseInterview, labResult, ...rest } = d;
     return {
       ...rest,
       createdAt: d.createdAt.toISOString(),
+      labResult: labResult
+        ? {
+            id: labResult.id,
+            medTechName: labResult.medTechName,
+            items: parseLabResults(labResult.labItems),
+            notes: labResult.notes,
+            createdAt: labResult.createdAt.toISOString(),
+          }
+        : null,
       weightKg: nurseInterview?.weightKg ? nurseInterview.weightKg.toNumber() : null,
       heightCm: nurseInterview?.heightCm ? nurseInterview.heightCm.toNumber() : null,
       systolicBp: nurseInterview?.systolicBp ?? null,
@@ -333,6 +374,7 @@ export async function getAvailableDoctorDiagnoses(
       chronicDiseaseDetails: nurseInterview?.chronicDiseaseDetails ?? null,
       chiefComplaint: nurseInterview?.chiefComplaint ?? null,
       symptomDescription: nurseInterview?.symptomDescription ?? null,
+      nurseNotes: nurseInterview?.notes ?? null,
     };
   });
 }

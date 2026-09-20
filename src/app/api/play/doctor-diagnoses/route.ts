@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { parseLabResults } from "@/lib/disease-lab-results";
 import { evaluateDoctorDiagnosisWithAI } from "@/lib/server/ai-evaluation";
+import { getAvailableDoctorDiagnoses } from "@/lib/server/play-data";
 import {
   getRunningSimulationParticipant,
   getRunningSimulationScope,
@@ -61,66 +62,11 @@ export async function GET(request: NextRequest) {
     const simulation = await getRunningSimulationScope({ simulationId, classroomId, groupId });
     if (!simulation) return jsonError("รอบจำลองยังไม่เริ่ม หรือข้อมูลห้องไม่ถูกต้อง", 409);
 
-    const diagnoses = await prisma.doctorDiagnosis.findMany({
-      where: {
-        classroomId,
-        groupId,
-        simulationId,
-        pharmacyDispense: null,
-      },
-      orderBy: { createdAt: "asc" },
-      take: 50,
-      select: {
-        id: true,
-        queueNumber: true,
-        patientCardId: true,
-        nurseInterviewId: true,
-        doctorName: true,
-        patientPrefix: true,
-        patientFirstName: true,
-        patientLastName: true,
-        age: true,
-        gender: true,
-        maritalStatus: true,
-        diseaseName: true,
-        doctorDiagnosis: true,
-        createdAt: true,
-        nurseInterview: {
-          select: {
-            weightKg: true,
-            heightCm: true,
-            systolicBp: true,
-            diastolicBp: true,
-            pulseBpm: true,
-            chronicDiseaseStatus: true,
-            chronicDiseaseDetails: true,
-            chiefComplaint: true,
-            symptomDescription: true,
-          },
-        },
-      },
-    });
+    // ใช้ตัวช่วยเดียวกับหน้าเภสัชกรฝั่ง server เพื่อให้รูปแบบข้อมูลตรงกันตอนกดรีเฟรช
+    const diagnoses = await getAvailableDoctorDiagnoses(classroomId, groupId, simulationId);
 
     return NextResponse.json(
-      {
-        success: true,
-        data: diagnoses.map((d) => {
-          const { nurseInterview, ...rest } = d;
-          return {
-            ...rest,
-            createdAt: d.createdAt.toISOString(),
-            weightKg: nurseInterview?.weightKg ? nurseInterview.weightKg.toNumber() : null,
-            heightCm: nurseInterview?.heightCm ? nurseInterview.heightCm.toNumber() : null,
-            systolicBp: nurseInterview?.systolicBp ?? null,
-            diastolicBp: nurseInterview?.diastolicBp ?? null,
-            pulseBpm: nurseInterview?.pulseBpm ?? null,
-            chronicDiseaseStatus: nurseInterview?.chronicDiseaseStatus ?? null,
-            chronicDiseaseDetails: nurseInterview?.chronicDiseaseDetails ?? null,
-            chiefComplaint: nurseInterview?.chiefComplaint ?? null,
-            symptomDescription: nurseInterview?.symptomDescription ?? null,
-          };
-        }),
-      },
+      { success: true, data: diagnoses },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {

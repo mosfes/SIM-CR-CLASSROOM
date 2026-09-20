@@ -220,6 +220,14 @@ export async function GET(
             doctorDiagnosisText: true,
             medicines: true,
             totalTablets: true,
+            hormoneChoiceKey: true,
+            hormoneChoiceLabel: true,
+            treatmentChoiceKey: true,
+            treatmentChoiceLabel: true,
+            isHormoneCorrect: true,
+            isTreatmentCorrect: true,
+            isCorrect: true,
+            evaluationScore: true,
             createdAt: true,
           },
         }),
@@ -263,6 +271,21 @@ export async function GET(
       (sum, p) => sum + (p.totalTablets || 0),
       0
     );
+    // เคสที่บันทึกก่อนมีระบบตัวเลือก A-U / ก-ธ จะไม่มีเฉลย จึงไม่นำมาคิดความแม่นยำ
+    const pharmacyWithKey = pharmacyDispenses.filter((p) => p.isCorrect !== null);
+    const pharmacyCorrectCount = pharmacyWithKey.filter((p) => p.isCorrect === true).length;
+    const pharmacyWithScore = pharmacyDispenses.filter(
+      (p) => typeof p.evaluationScore === "number"
+    );
+    const pharmacyAvgScore =
+      pharmacyWithScore.length > 0
+        ? Number(
+            (
+              pharmacyWithScore.reduce((sum, p) => sum + (p.evaluationScore || 0), 0) /
+              pharmacyWithScore.length
+            ).toFixed(1)
+          )
+        : null;
 
     // Summary statistics
     const summary = {
@@ -296,6 +319,12 @@ export async function GET(
       pharmacistStats: {
         total: pharmacyDispenses.length,
         totalTablets: pharmacistTotalTablets,
+        correct: pharmacyCorrectCount,
+        accuracyPercent:
+          pharmacyWithKey.length > 0
+            ? Math.round((pharmacyCorrectCount / pharmacyWithKey.length) * 100)
+            : 0,
+        avgScore: pharmacyAvgScore,
       },
     };
 
@@ -488,6 +517,14 @@ export async function GET(
           doctorDiagnosisText: item.doctorDiagnosisText,
           medicines: item.medicines,
           totalTablets: item.totalTablets,
+          hormoneChoiceKey: item.hormoneChoiceKey,
+          hormoneChoiceLabel: item.hormoneChoiceLabel,
+          treatmentChoiceKey: item.treatmentChoiceKey,
+          treatmentChoiceLabel: item.treatmentChoiceLabel,
+          isHormoneCorrect: item.isHormoneCorrect,
+          isTreatmentCorrect: item.isTreatmentCorrect,
+          isCorrect: item.isCorrect,
+          evaluationScore: item.evaluationScore,
         },
       });
     }

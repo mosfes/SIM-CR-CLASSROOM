@@ -9,6 +9,7 @@ import {
   getAvailablePatientCards,
   getLabPanels,
   getNurseInterviewsAwaitingLab,
+  getPharmacyChoiceOptions,
 } from "@/lib/server/play-data";
 import { getParticipantSessionContext } from "@/lib/server/simulation-data";
 import { ChangeRoleModal } from "@/components/play/change-role-modal";
@@ -85,10 +86,13 @@ export default async function PlayRoleDashboard({
           getLabPanels(),
         ])
       : [[], []];
-  const availableDoctorDiagnoses =
+  const [availableDoctorDiagnoses, pharmacyChoiceOptions] =
     role.id === "pharmacist"
-      ? await getAvailableDoctorDiagnoses(classroom.id, group.id, activeSimulationId)
-      : [];
+      ? await Promise.all([
+          getAvailableDoctorDiagnoses(classroom.id, group.id, activeSimulationId),
+          getPharmacyChoiceOptions(),
+        ])
+      : [[], { hormones: [], treatments: [] }];
 
   const Icon = role.icon;
 
@@ -149,7 +153,15 @@ export default async function PlayRoleDashboard({
         ) : role.id === "doctor" ? (
           <DoctorDiagnosisForm doctor={student} classroom={classroom} group={group} initialNurseInterviews={availableNurseInterviews} diseases={activeDiseases} simulationId={activeSimulationId} />
         ) : (
-          <PharmacistDispenseForm pharmacist={student} classroom={classroom} group={group} initialDoctorDiagnoses={availableDoctorDiagnoses} simulationId={activeSimulationId} />
+          <PharmacistDispenseForm
+            pharmacist={student}
+            classroom={classroom}
+            group={group}
+            initialDoctorDiagnoses={availableDoctorDiagnoses}
+            hormoneOptions={pharmacyChoiceOptions.hormones}
+            treatmentOptions={pharmacyChoiceOptions.treatments}
+            simulationId={activeSimulationId}
+          />
         )}
       </div>
     </main>
